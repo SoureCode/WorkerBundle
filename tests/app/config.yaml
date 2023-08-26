@@ -1,0 +1,50 @@
+framework:
+  http_method_override: false
+  session:
+    handler_id: null
+    cookie_secure: auto
+    cookie_samesite: lax
+    storage_factory_id: session.storage.factory.native
+  messenger:
+    failure_transport: failed
+    buses:
+      messenger.bus.default:
+        middleware:
+          - doctrine_ping_connection
+          - doctrine_close_connection
+    transports:
+      async: 'doctrine://default?auto_setup=0'
+      failed: 'doctrine://default?queue_name=failed'
+      sync: 'sync://'
+
+    routing:
+      SoureCode\Bundle\Worker\Tests\app\src\Message\SleepMessage: async
+
+monolog:
+  handlers:
+    console:
+      type: console
+      level: debug
+    #file: # @note for debugging
+    #  type: stream
+    #  path: '%kernel.project_dir%/var/output.log'
+    #  level: debug
+    #  channels: ['!event', '!doctrine']
+
+doctrine:
+  dbal:
+    url: 'sqlite:///%kernel.project_dir%/var/data.db'
+  orm:
+    auto_generate_proxy_classes: true
+    enable_lazy_ghost_objects: true
+    report_fields_where_declared: true
+    validate_xml_mapping: true
+    naming_strategy: doctrine.orm.naming_strategy.underscore_number_aware
+    auto_mapping: true
+    mappings:
+      SoureCodeWorker:
+        is_bundle: false
+        type: attribute
+        dir: '%kernel.project_dir%/../../src/Entity'
+        prefix: 'SoureCode\Bundle\Worker\Entity'
+        alias: SoureCodeWorker

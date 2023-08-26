@@ -1,0 +1,5 @@
+vendor/
+tests/var/data.db
+tests/var/run/
+tests/var/tmp/
+.phpunit.result.cache

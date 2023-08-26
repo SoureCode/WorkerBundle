@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+
+CURRENT_DIRECTORY="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_DIRECTORY="$(dirname "$CURRENT_DIRECTORY")"
+DOCS_DIRECTORY="$PROJECT_DIRECTORY/docs"
+TEST_APP_DIRECTORY="$PROJECT_DIRECTORY/tests/app"
+BIN_DIRECTORY="$TEST_APP_DIRECTORY/bin"
+CONSOLE="$BIN_DIRECTORY/console"
+
+COMMANDS="worker
+worker:start
+worker:stop"
+
+NEWLINE=$'\n'
+
+for COMMAND in $COMMANDS; do
+  MD_FILE_NAME="$(echo "$COMMAND" | tr ':' '-')"
+  MARKDOWN="${NEWLINE}# Command: ${COMMAND}${NEWLINE}${NEWLINE}## Usage${NEWLINE}${NEWLINE}\`\`\`shell${NEWLINE}"
+  USAGE="$("$CONSOLE" "$COMMAND" --help)"
+  MARKDOWN="${MARKDOWN}${USAGE}${NEWLINE}\`\`\`${NEWLINE}${NEWLINE}"
+
+  echo "$MARKDOWN" >"$DOCS_DIRECTORY/$MD_FILE_NAME.md"
+done

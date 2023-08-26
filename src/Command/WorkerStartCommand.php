@@ -11,7 +11,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 
 #[AsCommand(
     name: 'worker:start',
-    description: 'Starts a worker'
+    description: 'Start one or all workers'
 )]
 class WorkerStartCommand extends Command
 {
@@ -26,12 +26,26 @@ class WorkerStartCommand extends Command
 
     protected function configure(): void
     {
-        $this->addOption('id', 'i', InputOption::VALUE_REQUIRED, 'Worker ID');
+        $this->addOption('id', 'i', InputOption::VALUE_REQUIRED, 'Worker ID')
+            ->addOption('all', 'a', InputOption::VALUE_NONE, 'Start all workers');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $id = $input->getOption('id');
+        $all = $input->getOption('all');
+
+        if(null !== $id && $all) {
+            throw new \RuntimeException('You can not use --id and --all at the same time');
+        }
+
+        if(null === $id && !$all) {
+            throw new \RuntimeException('You must use --id or --all');
+        }
+
+        if ($all) {
+            return $this->workerManager->startAll();
+        }
 
         if ($id === null) {
             throw new \RuntimeException('Missing worker ID');

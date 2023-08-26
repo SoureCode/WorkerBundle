@@ -6,7 +6,6 @@ use Doctrine\ORM\EntityManagerInterface;
 use Exception;
 use InvalidArgumentException;
 use Psr\Log\LoggerInterface;
-use RuntimeException;
 use SoureCode\Bundle\Daemon\Command\DaemonStartCommand;
 use SoureCode\Bundle\Daemon\Command\DaemonStopCommand;
 use SoureCode\Bundle\Worker\Repository\WorkerRepository;
@@ -108,7 +107,9 @@ class WorkerManager
         $workers = $this->workerRepository->findAll();
 
         if (0 === count($workers)) {
-            throw new RuntimeException('No workers found.');
+            $this->logger->warning('No workers found.');
+
+            return 0;
         }
 
         $exitCodes = [];
@@ -133,6 +134,30 @@ class WorkerManager
         $input = new ArrayInput($inputParameters);
 
         return $application->run($input, $output);
+    }
+
+    /**
+     * @throws Exception
+     */
+    public function startAll(): int
+    {
+        $workers = $this->workerRepository->findAll();
+
+        if (0 === count($workers)) {
+            $this->logger->warning('No workers found.');
+
+            return 0;
+        }
+
+        $exitCodes = [];
+
+        foreach ($workers as $worker) {
+            if (!$worker->isRunning()) {
+                $exitCodes[$worker->getId()] = $this->start($worker->getId());
+            }
+        }
+
+        return max($exitCodes);
     }
 
     /**

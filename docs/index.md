@@ -63,3 +63,32 @@ return [
     \SoureCode\Bundle\Worker\SoureCodeWorkerBundle::class => ['all' => true],
 ];
 ```
+
+#### Step 3: Configure the Bundle
+
+Add doctrine mapping to your `config/packages/doctrine.yaml` file:
+
+```yaml
+doctrine:
+  orm:
+    mappings:
+      SoureCodeWorker:
+        is_bundle: false
+        type: attribute
+        dir: '%kernel.project_dir%/vendor/sourecode/worker-bundle/src/Entity'
+        prefix: 'SoureCode\Bundle\Worker\Entity'
+        alias: SoureCodeWorker
+```
+
+Create a new migration with `make:migration` and execute it with `doctrine:migrations:migrate`.
+
+```shell
+$ symfony console make:migration
+$ symfony console doctrine:migrations:migrate
+```
+
+Or run just `doctrine:schema:update` if you don't want to use migrations or are still in development.
+
+```shell
+$ symfony console doctrine:schema:update --force
+```

@@ -348,24 +348,28 @@ class Worker
 
     public function onWorkerMessageFailed(ClockInterface $clock): void
     {
+        $this->setLastHeartbeat($clock->now());
         $this->incrementFailed();
         $this->addMemoryUsage($clock);
     }
 
     public function onWorkerMessageHandled(ClockInterface $clock): void
     {
+        $this->setLastHeartbeat($clock->now());
         $this->incrementHandled();
         $this->addMemoryUsage($clock);
     }
 
     public function onWorkerMessageReceived(ClockInterface $clock): void
     {
+        $this->setLastHeartbeat($clock->now());
         $this->setStatus(WorkerStatus::PROCESSING);
         $this->addMemoryUsage($clock);
     }
 
     public function onWorkerRunning(ClockInterface $clock): void
     {
+        $this->setLastHeartbeat($clock->now());
         $this->addMemoryUsage($clock);
     }
 

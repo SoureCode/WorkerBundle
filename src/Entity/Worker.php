@@ -5,9 +5,9 @@ namespace SoureCode\Bundle\Worker\Entity;
 use DateTimeImmutable;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
+use Psr\Clock\ClockInterface;
 use SoureCode\Bundle\Worker\Command\WorkerCommand;
-use SoureCode\Bundle\Worker\Repository\WorkerRepository;
-use Symfony\Component\Clock\MonotonicClock;
+use Symfony\Component\Messenger\Event\WorkerRunningEvent;
 
 #[ORM\Entity()]
 class Worker
@@ -60,6 +60,9 @@ class Worker
 
     #[ORM\Column]
     private ?bool $shouldExit = false;
+
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
+    private ?DateTimeImmutable $lastHeartbeat = null;
 
     public function setReset(bool $reset): static
     {
@@ -235,18 +238,24 @@ class Worker
         $this->memoryUsage = $memoryUsage;
     }
 
-    public function addMemoryUsage(): void
+    public function addMemoryUsage(ClockInterface $clock): void
     {
         $memoryUsage = memory_get_usage(true);
-        $timeZone = new \DateTimeZone("UTC");
-        $now = (new MonotonicClock())->withTimeZone($timeZone)->now();
+        $now = $clock->now();
+        $key = $now->format('Y-m-d\TH:i:s');
 
-        $this->memoryUsage[$now->format('Y-m-d\TH:i:s.u')] = $memoryUsage;
+        if (array_key_exists($key, $this->memoryUsage)) {
+            $this->memoryUsage[$key] = max(
+                $this->memoryUsage[$key],
+                $memoryUsage
+            );
+        } else {
+            $this->memoryUsage[$key] = $memoryUsage;
+        }
 
         // remove older than 1 hour
-        $this->memoryUsage = array_filter($this->memoryUsage, static function ($key) use ($timeZone, $now) {
-            $key = preg_replace('/\.\d+$/', '', $key);
-            $date = new \DateTimeImmutable($key, $timeZone);
+        $this->memoryUsage = array_filter($this->memoryUsage, static function ($key) use ($now) {
+            $date = new \DateTimeImmutable($key);
             $diff = $now->getTimestamp() - $date->getTimestamp();
 
             return $diff < 3600;
@@ -309,5 +318,66 @@ class Worker
         $this->shouldExit = $shouldExit;
 
         return $this;
+    }
+
+    public function getLastHeartbeat(): ?DateTimeImmutable
+    {
+        return $this->lastHeartbeat;
+    }
+
+    public function setLastHeartbeat(?DateTimeImmutable $lastHeartbeat): void
+    {
+        $this->lastHeartbeat = $lastHeartbeat;
+    }
+
+    public function onWorkerStarted(ClockInterface $clock): void
+    {
+        $now = $clock->now();
+
+        $this->setStatus(WorkerStatus::IDLE);
+        $this->setShouldExit(false);
+        $this->setStartedAt($now);
+        $this->setLastHeartbeat($now);
+        $this->addMemoryUsage($clock);
+    }
+
+    public function onWorkerStopped(ClockInterface $clock): void
+    {
+        $this->setStatus(WorkerStatus::OFFLINE);
+        $this->setStartedAt(null);
+        $this->setShouldExit(false);
+        $this->setLastHeartbeat(null);
+        $this->addMemoryUsage($clock);
+    }
+
+    public function onWorkerMessageFailed(ClockInterface $clock): void
+    {
+        $this->incrementFailed();
+        $this->addMemoryUsage($clock);
+    }
+
+    public function onWorkerMessageHandled(ClockInterface $clock): void
+    {
+        $this->incrementHandled();
+        $this->addMemoryUsage($clock);
+    }
+
+    public function onWorkerMessageReceived(ClockInterface $clock): void
+    {
+        $this->setStatus(WorkerStatus::PROCESSING);
+        $this->addMemoryUsage($clock);
+    }
+
+    public function onWorkerRunning(WorkerRunningEvent $event, ClockInterface $clock)
+    {
+        if ($event->isWorkerIdle() && $this->getShouldExit()) {
+            $event->getWorker()->stop();
+            $this->setShouldExit(false);
+            $this->setStatus(WorkerStatus::OFFLINE);
+        } else {
+            $this->setStatus($event->isWorkerIdle() ? WorkerStatus::IDLE : WorkerStatus::PROCESSING);
+        }
+
+        $this->addMemoryUsage($clock);
     }
 }

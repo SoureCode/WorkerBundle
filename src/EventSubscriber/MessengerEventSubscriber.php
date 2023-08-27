@@ -7,7 +7,6 @@ use Psr\Clock\ClockInterface;
 use Psr\Log\LoggerInterface;
 use SoureCode\Bundle\Worker\Entity\MessengerMessage;
 use SoureCode\Bundle\Worker\Entity\Worker;
-use SoureCode\Bundle\Worker\Entity\WorkerStatus;
 use SoureCode\Bundle\Worker\Messenger\TrackingStamp;
 use SoureCode\Bundle\Worker\Repository\MessengerMessageRepository;
 use SoureCode\Bundle\Worker\Repository\WorkerRepository;
@@ -68,15 +67,7 @@ class MessengerEventSubscriber implements EventSubscriberInterface
         $worker = $this->getWorker();
 
         if (null !== $worker) {
-            if ($event->isWorkerIdle() && $worker->getShouldExit()) {
-                $event->getWorker()->stop();
-                $worker->setShouldExit(false);
-                $worker->setStatus(WorkerStatus::OFFLINE);
-            } else {
-                $worker->setStatus($event->isWorkerIdle() ? WorkerStatus::IDLE : WorkerStatus::PROCESSING);
-            }
-
-            $worker->addMemoryUsage();
+            $worker->onWorkerRunning($event, $this->clock);
 
             $this->entityManager->flush();
         }
@@ -99,8 +90,7 @@ class MessengerEventSubscriber implements EventSubscriberInterface
         $worker = $this->getWorker();
 
         if (null !== $worker) {
-            $worker->setStatus(WorkerStatus::PROCESSING);
-            $worker->addMemoryUsage();
+            $worker->onWorkerMessageReceived($this->clock);
 
             $this->entityManager->flush();
         }
@@ -146,8 +136,7 @@ class MessengerEventSubscriber implements EventSubscriberInterface
         $worker = $this->getWorker();
 
         if (null !== $worker) {
-            $worker->incrementHandled();
-            $worker->addMemoryUsage();
+            $worker->onWorkerMessageHandled($this->clock);
 
             $this->entityManager->flush();
         }
@@ -168,8 +157,7 @@ class MessengerEventSubscriber implements EventSubscriberInterface
         $worker = $this->getWorker();
 
         if (null !== $worker) {
-            $worker->incrementFailed();
-            $worker->addMemoryUsage();
+            $worker->onWorkerMessageFailed($this->clock);
 
             $this->entityManager->flush();
         }
@@ -180,10 +168,7 @@ class MessengerEventSubscriber implements EventSubscriberInterface
         $worker = $this->getWorker();
 
         if (null !== $worker) {
-            $worker->setStatus(WorkerStatus::OFFLINE);
-            $worker->setStartedAt(null);
-            $worker->setShouldExit(false);
-            $worker->addMemoryUsage();
+            $worker->onWorkerStopped($this->clock);
 
             $this->entityManager->flush();
         }
@@ -196,10 +181,7 @@ class MessengerEventSubscriber implements EventSubscriberInterface
         if (null !== $worker) {
             // @todo test if flush and the middleware named "doctrine_transaction" works
             //       otherwise, write manually to database over the entity manager?
-
-            $worker->setStatus(WorkerStatus::IDLE);
-            $worker->setStartedAt($this->clock->now());
-            $worker->addMemoryUsage();
+            $worker->onWorkerStarted($this->clock);
 
             $this->entityManager->flush();
         }

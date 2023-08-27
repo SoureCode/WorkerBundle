@@ -76,7 +76,7 @@ class MessengerEventSubscriber implements EventSubscriberInterface
                 $worker->setStatus($event->isWorkerIdle() ? WorkerStatus::IDLE : WorkerStatus::PROCESSING);
             }
 
-            $worker->addMemoryUsage(memory_get_usage(true));
+            $worker->addMemoryUsage();
 
             $this->entityManager->flush();
         }
@@ -100,7 +100,7 @@ class MessengerEventSubscriber implements EventSubscriberInterface
 
         if (null !== $worker) {
             $worker->setStatus(WorkerStatus::PROCESSING);
-            $worker->addMemoryUsage(memory_get_usage(true));
+            $worker->addMemoryUsage();
 
             $this->entityManager->flush();
         }
@@ -147,7 +147,7 @@ class MessengerEventSubscriber implements EventSubscriberInterface
 
         if (null !== $worker) {
             $worker->incrementHandled();
-            $worker->addMemoryUsage(memory_get_usage(true));
+            $worker->addMemoryUsage();
 
             $this->entityManager->flush();
         }
@@ -169,7 +169,7 @@ class MessengerEventSubscriber implements EventSubscriberInterface
 
         if (null !== $worker) {
             $worker->incrementFailed();
-            $worker->addMemoryUsage(memory_get_usage(true));
+            $worker->addMemoryUsage();
 
             $this->entityManager->flush();
         }
@@ -183,7 +183,7 @@ class MessengerEventSubscriber implements EventSubscriberInterface
             $worker->setStatus(WorkerStatus::OFFLINE);
             $worker->setStartedAt(null);
             $worker->setShouldExit(false);
-            $worker->addMemoryUsage(memory_get_usage(true));
+            $worker->addMemoryUsage();
 
             $this->entityManager->flush();
         }
@@ -199,7 +199,7 @@ class MessengerEventSubscriber implements EventSubscriberInterface
 
             $worker->setStatus(WorkerStatus::IDLE);
             $worker->setStartedAt($this->clock->now());
-            $worker->addMemoryUsage(memory_get_usage(true));
+            $worker->addMemoryUsage();
 
             $this->entityManager->flush();
         }

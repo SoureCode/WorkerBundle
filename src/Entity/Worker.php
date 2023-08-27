@@ -235,8 +235,9 @@ class Worker
         $this->memoryUsage = $memoryUsage;
     }
 
-    public function addMemoryUsage(int $memoryUsage): void
+    public function addMemoryUsage(): void
     {
+        $memoryUsage = memory_get_usage(true);
         $timeZone = new \DateTimeZone("UTC");
         $now = (new MonotonicClock())->withTimeZone($timeZone)->now();
 

@@ -5,6 +5,7 @@ namespace SoureCode\Bundle\Worker;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Clock\ClockInterface;
 use Psr\Log\LoggerInterface;
+use SoureCode\Bundle\Daemon\Manager\DaemonManager;
 use SoureCode\Bundle\Worker\Command\WorkerCommand;
 use SoureCode\Bundle\Worker\Command\WorkerStartCommand;
 use SoureCode\Bundle\Worker\Command\WorkerStopCommand;
@@ -61,7 +62,7 @@ class SoureCodeWorkerBundle extends AbstractBundle
 
         $services->set('soure_code.worker.manager.worker', WorkerManager::class)
             ->args([
-                service('kernel'),
+                service(DaemonManager::class),
                 service(EntityManagerInterface::class),
                 service(LoggerInterface::class),
                 service('soure_code.worker.repository.worker'),
@@ -71,6 +72,7 @@ class SoureCodeWorkerBundle extends AbstractBundle
                 abstract_arg('receiver_names'),
                 abstract_arg('bus_ids'),
                 service(MessageBusInterface::class),
+                service(ClockInterface::class),
             ]);
 
         $services

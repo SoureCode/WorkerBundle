@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "ccac27f53e7f17a7ac2248bb8c7b8afa",
+    "content-hash": "723abd5980bcdd66b132a1b7717344fd",
     "packages": [
         {
             "name": "doctrine/cache",
@@ -1385,16 +1385,16 @@
         },
         {
             "name": "sourecode/daemon-bundle",
-            "version": "v0.1.0",
+            "version": "v0.2.1",
             "source": {
                 "type": "git",
                 "url": "https://github.com/SoureCode/DaemonBundle.git",
-                "reference": "da663615114d57fff98591643cacbdf68cc9b6a2"
+                "reference": "4bdee6954be278ac07295ad53d298935e78a82c2"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/SoureCode/DaemonBundle/zipball/da663615114d57fff98591643cacbdf68cc9b6a2",
-                "reference": "da663615114d57fff98591643cacbdf68cc9b6a2",
+                "url": "https://api.github.com/repos/SoureCode/DaemonBundle/zipball/4bdee6954be278ac07295ad53d298935e78a82c2",
+                "reference": "4bdee6954be278ac07295ad53d298935e78a82c2",
                 "shasum": ""
             },
             "require": {
@@ -1419,7 +1419,7 @@
                 "symfony/phpunit-bridge": "^6.3",
                 "symfony/runtime": "^6.3"
             },
-            "type": "project",
+            "type": "symfony-bundle",
             "autoload": {
                 "psr-4": {
                     "SoureCode\\Bundle\\Daemon\\": "src/"
@@ -1437,9 +1437,9 @@
             ],
             "support": {
                 "issues": "https://github.com/SoureCode/DaemonBundle/issues",
-                "source": "https://github.com/SoureCode/DaemonBundle/tree/v0.1.0"
+                "source": "https://github.com/SoureCode/DaemonBundle/tree/v0.2.1"
             },
-            "time": "2023-08-26T12:38:36+00:00"
+            "time": "2023-08-27T20:09:59+00:00"
         },
         {
             "name": "symfony/cache",

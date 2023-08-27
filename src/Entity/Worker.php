@@ -334,19 +334,13 @@ class Worker
     {
         $now = $clock->now();
 
-        $this->setStatus(WorkerStatus::IDLE);
-        $this->setShouldExit(false);
-        $this->setStartedAt($now);
-        $this->setLastHeartbeat($now);
+        $this->online($now);
         $this->addMemoryUsage($clock);
     }
 
     public function onWorkerStopped(ClockInterface $clock): void
     {
-        $this->setStatus(WorkerStatus::OFFLINE);
-        $this->setStartedAt(null);
-        $this->setShouldExit(false);
-        $this->setLastHeartbeat(null);
+        $this->offline();
         $this->addMemoryUsage($clock);
     }
 
@@ -379,5 +373,21 @@ class Worker
         }
 
         $this->addMemoryUsage($clock);
+    }
+
+    public function offline(): void
+    {
+        $this->setStatus(WorkerStatus::OFFLINE);
+        $this->setStartedAt(null);
+        $this->setShouldExit(false);
+        $this->setLastHeartbeat(null);
+    }
+
+    private function online(DateTimeImmutable $now): void
+    {
+        $this->setStatus(WorkerStatus::IDLE);
+        $this->setShouldExit(false);
+        $this->setStartedAt($now);
+        $this->setLastHeartbeat($now);
     }
 }

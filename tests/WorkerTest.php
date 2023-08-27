@@ -60,7 +60,6 @@ class WorkerTest extends AbstractBaseTest
         $this->workerManager = null;
     }
 
-
     public function testWorkerStart(): void
     {
         $worker = new Worker();

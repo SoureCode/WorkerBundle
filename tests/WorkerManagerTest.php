@@ -97,6 +97,6 @@ class WorkerManagerTest extends AbstractBaseTest
         $result = $this->workerManager->stopAll();
 
         // Assert
-        $this->assertSame(0, $result);
+        $this->assertTrue( $result);
     }
 }

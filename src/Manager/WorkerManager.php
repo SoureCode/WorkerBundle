@@ -5,26 +5,21 @@ namespace SoureCode\Bundle\Worker\Manager;
 use Doctrine\ORM\EntityManagerInterface;
 use Exception;
 use InvalidArgumentException;
+use Psr\Clock\ClockInterface;
 use Psr\Log\LoggerInterface;
-use SoureCode\Bundle\Daemon\Command\DaemonStartCommand;
-use SoureCode\Bundle\Daemon\Command\DaemonStopCommand;
+use SoureCode\Bundle\Daemon\Manager\DaemonManager;
+use SoureCode\Bundle\Worker\Entity\Worker;
 use SoureCode\Bundle\Worker\Message\StartWorkerMessage;
 use SoureCode\Bundle\Worker\Message\StopWorkerMessage;
 use SoureCode\Bundle\Worker\Repository\WorkerRepository;
-use Symfony\Bundle\FrameworkBundle\Console\Application;
-use Symfony\Component\Console\Input\ArrayInput;
-use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Filesystem\Path;
-use Symfony\Component\HttpKernel\KernelInterface;
 use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Messenger\Stamp\DispatchAfterCurrentBusStamp;
-use Symfony\Component\Messenger\Transport\Receiver\ReceiverInterface;
 use Symfony\Component\Process\PhpExecutableFinder;
 use Symfony\Contracts\Service\ServiceProviderInterface;
 
 class WorkerManager
 {
-    private KernelInterface $kernel;
     private LoggerInterface $logger;
     private WorkerRepository $workerRepository;
     private string $projectDirectory;
@@ -34,9 +29,16 @@ class WorkerManager
     private array $busIds;
     private ?string $globalFailureReceiverName;
     private MessageBusInterface $messageBus;
+    private DaemonManager $daemonManager;
+    private ClockInterface $clock;
+
+    public static function getDaemonId(int $id): string
+    {
+        return 'soure_code_worker_' . $id;
+    }
 
     public function __construct(
-        KernelInterface          $kernel,
+        DaemonManager            $daemonManager,
         EntityManagerInterface   $entityManager,
         LoggerInterface          $logger,
         WorkerRepository         $workerRepository,
@@ -46,9 +48,9 @@ class WorkerManager
         array                    $receiverNames,
         array                    $busIds,
         MessageBusInterface      $messageBus,
+        ClockInterface           $clock
     )
     {
-        $this->kernel = $kernel;
         $this->entityManager = $entityManager;
         $this->logger = $logger;
         $this->workerRepository = $workerRepository;
@@ -58,11 +60,13 @@ class WorkerManager
         $this->busIds = $busIds;
         $this->globalFailureReceiverName = $globalFailureReceiverName;
         $this->messageBus = $messageBus;
+        $this->daemonManager = $daemonManager;
+        $this->clock = $clock;
     }
 
     /**
-     * @throws Exception
      * @return true|int true if async or exit code
+     * @throws Exception
      */
     public function startAsync(int $id): true|int
     {
@@ -81,8 +85,8 @@ class WorkerManager
     }
 
     /**
-     * @throws Exception
      * @return true|int true if async or exit code
+     * @throws Exception
      */
     public function stopAsync(int $id): true|int
     {
@@ -100,10 +104,7 @@ class WorkerManager
         return $this->stop($id);
     }
 
-    /**
-     * @throws Exception
-     */
-    public function start(int $id): int
+    public function start(int $id): bool
     {
         $worker = $this->workerRepository->find($id);
 
@@ -118,6 +119,7 @@ class WorkerManager
         }
 
         $worker->setShouldExit(false);
+
         $this->entityManager->flush();
 
         $command = [
@@ -128,18 +130,23 @@ class WorkerManager
 
         $commandLine = implode(" ", $command);
 
-        return $this->run([
-            'command' => DaemonStartCommand::getDefaultName(),
-            '-vv' => true,
-            '--id' => 'worker_' . $id,
-            'process' => $commandLine,
-        ]);
+        $daemonId = self::getDaemonId($id);
+
+        return $this->daemonManager->start($daemonId, $commandLine);
     }
 
-    /**
-     * @throws Exception
-     */
-    public function stop(int $id): int
+    public function stop(int $id): bool
+    {
+        if (!$this->stopGracefully($id)) {
+            return false;
+        }
+
+        $daemonId = self::getDaemonId($id);
+
+        return $this->daemonManager->stop($daemonId);
+    }
+
+    public function stopGracefully(int $id): bool
     {
         $worker = $this->workerRepository->find($id);
 
@@ -150,24 +157,16 @@ class WorkerManager
         if (!$worker->isRunning()) {
             $this->logger->warning(sprintf('Worker with id "%s" is not running.', $id));
 
-            return 0;
+            return false;
         }
 
         $worker->setShouldExit(true);
         $this->entityManager->flush();
 
-        // Wait for next iteration and hope we can stop the worker gracefully.
-        // Just +1 second to be sure.
-        sleep(1 + $worker->getSleep());
-
-        return $this->run([
-            'command' => DaemonStopCommand::getDefaultName(),
-            '-vv' => true,
-            '--id' => 'worker_' . $id,
-        ]);
+        return true;
     }
 
-    public function stopAll(): int
+    public function stopAll(): bool
     {
         $workers = $this->workerRepository->findAll();
 
@@ -177,34 +176,18 @@ class WorkerManager
             return 0;
         }
 
-        $exitCodes = [0, 0];
+        $stopped = [];
 
         foreach ($workers as $worker) {
             if ($worker->isRunning()) {
-                $exitCodes[$worker->getId()] = $this->stop($worker->getId());
+                $stopped[] = $this->stop($worker->getId());
             }
         }
 
-        return max(...$exitCodes);
+        return !in_array(false, $stopped, true);
     }
 
-    /**
-     * @throws Exception
-     */
-    private function run(array $inputParameters, ?OutputInterface $output = null): int
-    {
-        $application = new Application($this->kernel);
-        $application->setAutoExit(false);
-
-        $input = new ArrayInput($inputParameters);
-
-        return $application->run($input, $output);
-    }
-
-    /**
-     * @throws Exception
-     */
-    public function startAll(): int
+    public function startAll(): bool
     {
         $workers = $this->workerRepository->findAll();
 
@@ -214,15 +197,15 @@ class WorkerManager
             return 0;
         }
 
-        $exitCodes = [0, 0];
+        $started = [];
 
         foreach ($workers as $worker) {
             if (!$worker->isRunning()) {
-                $exitCodes[$worker->getId()] = $this->start($worker->getId());
+                $started[] = $this->start($worker->getId());
             }
         }
 
-        return max(...$exitCodes);
+        return !in_array(false, $started, true);
     }
 
     public function getReceiverNames(): array
@@ -245,32 +228,6 @@ class WorkerManager
         return $this->globalFailureReceiverName;
     }
 
-    /**
-     * @copyright Symfony Process Component.
-     */
-    private function escape(string $argument): string
-    {
-        if ('' === $argument || null === $argument) {
-            return '""';
-        }
-
-        if ('\\' !== \DIRECTORY_SEPARATOR) {
-            return "'" . str_replace("'", "'\\''", $argument) . "'";
-        }
-
-        if (str_contains($argument, "\0")) {
-            $argument = str_replace("\0", '?', $argument);
-        }
-
-        if (!preg_match('/[\/()%!^"<>&|\s]/', $argument)) {
-            return $argument;
-        }
-
-        $argument = preg_replace('/(\\\\+)$/', '$1$1', $argument);
-
-        return '"' . str_replace(['"', '^', '%', '!', "\n"], ['""', '"^^"', '"^%"', '"^!"', '!LF!'], $argument) . '"';
-    }
-
     private function getConsolePath(): string
     {
         return Path::join($this->projectDirectory, 'bin', 'console');
@@ -288,32 +245,31 @@ class WorkerManager
         return array_merge([$php], $executableFinder->findArguments());
     }
 
-    /**
-     * @copyright Symfony Messenger Component
-     */
-    protected function getFailureReceiver(string $name = null): ReceiverInterface
-    {
-        if (null === $name ??= $this->globalFailureReceiverName) {
-            throw new InvalidArgumentException(
-                sprintf('No default failure transport is defined. Available transports are: "%s".',
-                    implode('", "', $this->getFailureTransportNames())
-                ));
-        }
-
-        if (!$this->failureTransports->has($name)) {
-            throw new InvalidArgumentException(
-                sprintf('The "%s" failure transport was not found. Available transports are: "%s".',
-                    $name,
-                    implode('", "', $this->getFailureTransportNames())
-                )
-            );
-        }
-
-        return $this->failureTransports->get($name);
-    }
-
     public function getFailureTransportNames(): array
     {
         return array_keys($this->failureTransports->getProvidedServices());
+    }
+
+    public function evaluateWorkers(): void
+    {
+        $workers = $this->workerRepository->findAll();
+
+        foreach ($workers as $worker) {
+            $this->evaluateWorkerStatus($worker);
+        }
+
+        $this->entityManager->flush();
+    }
+
+    public function evaluateWorkerStatus(Worker $worker): void
+    {
+        $daemonId = self::getDaemonId($worker->getId());
+        $isRunning = $this->daemonManager->isRunning($daemonId);
+
+        if (!$isRunning) {
+            $worker->offline();
+        } else {
+            $worker->setLastHeartbeat($this->clock->now());
+        }
     }
 }

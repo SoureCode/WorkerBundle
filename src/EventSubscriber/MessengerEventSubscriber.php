@@ -70,9 +70,12 @@ class MessengerEventSubscriber implements EventSubscriberInterface
         if (null !== $worker) {
             if ($event->isWorkerIdle() && $worker->getShouldExit()) {
                 $event->getWorker()->stop();
+                $worker->setShouldExit(false);
+                $worker->setStatus(WorkerStatus::OFFLINE);
+            } else {
+                $worker->setStatus($event->isWorkerIdle() ? WorkerStatus::IDLE : WorkerStatus::PROCESSING);
             }
 
-            $worker->setStatus($event->isWorkerIdle() ? WorkerStatus::IDLE : WorkerStatus::PROCESSING);
             $worker->addMemoryUsage(memory_get_usage(true));
 
             $this->entityManager->flush();

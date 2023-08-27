@@ -9,7 +9,7 @@ use SoureCode\Bundle\Worker\Command\WorkerCommand;
 use SoureCode\Bundle\Worker\Repository\WorkerRepository;
 use Symfony\Component\Clock\MonotonicClock;
 
-#[ORM\Entity(repositoryClass: WorkerRepository::class)]
+#[ORM\Entity()]
 class Worker
 {
     public static ?int $currentId = null;

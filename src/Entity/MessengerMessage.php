@@ -10,7 +10,7 @@ use SoureCode\Bundle\Worker\Repository\MessengerMessageRepository;
 use Symfony\Component\Messenger\Envelope;
 use Symfony\Component\Messenger\Transport\Serialization\SerializerInterface;
 
-#[ORM\Entity(repositoryClass: MessengerMessageRepository::class)]
+#[ORM\Entity()]
 #[ORM\Table(name: 'messenger_messages')] // @todo does not work if changed in config
 #[ORM\Index(columns: ['queue_name'])]
 #[ORM\Index(columns: ['available_at'])]

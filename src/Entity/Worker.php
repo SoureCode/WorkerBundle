@@ -6,7 +6,9 @@ use DateTimeImmutable;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Psr\Clock\ClockInterface;
+use SoureCode\Bundle\Daemon\Manager\DaemonManager;
 use SoureCode\Bundle\Worker\Command\WorkerCommand;
+use SoureCode\Bundle\Worker\Manager\WorkerManager;
 use Symfony\Component\Messenger\Event\WorkerRunningEvent;
 
 #[ORM\Entity()]
@@ -362,16 +364,8 @@ class Worker
         $this->addMemoryUsage($clock);
     }
 
-    public function onWorkerRunning(WorkerRunningEvent $event, ClockInterface $clock)
+    public function onWorkerRunning(ClockInterface $clock): void
     {
-        if ($event->isWorkerIdle() && $this->getShouldExit()) {
-            $event->getWorker()->stop();
-            $this->setShouldExit(false);
-            $this->setStatus(WorkerStatus::OFFLINE);
-        } else {
-            $this->setStatus($event->isWorkerIdle() ? WorkerStatus::IDLE : WorkerStatus::PROCESSING);
-        }
-
         $this->addMemoryUsage($clock);
     }
 

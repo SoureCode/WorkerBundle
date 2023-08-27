@@ -87,6 +87,7 @@ class SoureCodeWorkerBundle extends AbstractBundle
                 service('soure_code.worker.repository.worker'),
                 service('soure_code.worker.repository.messenger_message'),
                 service(SerializerInterface::class),
+                service(DaemonManager::class),
             ])
             ->tag('kernel.event_subscriber');
 

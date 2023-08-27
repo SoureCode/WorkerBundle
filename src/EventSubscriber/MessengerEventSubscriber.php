@@ -5,8 +5,11 @@ namespace SoureCode\Bundle\Worker\EventSubscriber;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Clock\ClockInterface;
 use Psr\Log\LoggerInterface;
+use SoureCode\Bundle\Daemon\Manager\DaemonManager;
 use SoureCode\Bundle\Worker\Entity\MessengerMessage;
 use SoureCode\Bundle\Worker\Entity\Worker;
+use SoureCode\Bundle\Worker\Entity\WorkerStatus;
+use SoureCode\Bundle\Worker\Manager\WorkerManager;
 use SoureCode\Bundle\Worker\Messenger\TrackingStamp;
 use SoureCode\Bundle\Worker\Repository\MessengerMessageRepository;
 use SoureCode\Bundle\Worker\Repository\WorkerRepository;
@@ -31,6 +34,8 @@ class MessengerEventSubscriber implements EventSubscriberInterface
     private WorkerRepository $workerRepository;
     private MessengerMessageRepository $messengerMessageRepository;
     private SerializerInterface $serializer;
+    private ?Worker $worker = null;
+    private DaemonManager $daemonManager;
 
     public function __construct(
         ClockInterface             $clock,
@@ -39,6 +44,7 @@ class MessengerEventSubscriber implements EventSubscriberInterface
         WorkerRepository           $workerRepository,
         MessengerMessageRepository $messengerMessageRepository,
         SerializerInterface        $serializer,
+        DaemonManager              $daemonManager,
     )
     {
         $this->clock = $clock;
@@ -47,6 +53,7 @@ class MessengerEventSubscriber implements EventSubscriberInterface
         $this->workerRepository = $workerRepository;
         $this->messengerMessageRepository = $messengerMessageRepository;
         $this->serializer = $serializer;
+        $this->daemonManager = $daemonManager;
     }
 
     public static function getSubscribedEvents(): array
@@ -67,7 +74,20 @@ class MessengerEventSubscriber implements EventSubscriberInterface
         $worker = $this->getWorker();
 
         if (null !== $worker) {
-            $worker->onWorkerRunning($event, $this->clock);
+            if ($event->isWorkerIdle() && $worker->getShouldExit()) {
+                $event->getWorker()->stop();
+                $worker->setShouldExit(false);
+                $worker->setStatus(WorkerStatus::OFFLINE);
+
+                // prevent auto restart from daemon.
+                $daemonId = WorkerManager::getDaemonId($worker->getId());
+                $pid = $this->daemonManager->pid($daemonId);
+                $pid->dumpExitFile();
+            } else {
+                $worker->setStatus($event->isWorkerIdle() ? WorkerStatus::IDLE : WorkerStatus::PROCESSING);
+            }
+
+            $worker->onWorkerRunning($this->clock);
 
             $this->entityManager->flush();
         }
@@ -172,6 +192,8 @@ class MessengerEventSubscriber implements EventSubscriberInterface
 
             $this->entityManager->flush();
         }
+
+        $this->worker = null;
     }
 
     public function onWorkerStarted(WorkerStartedEvent $event): void
@@ -189,11 +211,17 @@ class MessengerEventSubscriber implements EventSubscriberInterface
 
     private function getWorker(): ?Worker
     {
-        if (null === Worker::$currentId) {
-            return null;
+        if (null === $this->worker) {
+            if (null === Worker::$currentId) {
+                return null;
+            }
+
+            $this->worker = $this->workerRepository->find(Worker::$currentId);
         }
 
-        return $this->workerRepository->find(Worker::$currentId);
+        $this->entityManager->refresh($this->worker);
+
+        return $this->worker;
     }
 
     public function onSendMessageToTransports(SendMessageToTransportsEvent $event): void

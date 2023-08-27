@@ -56,7 +56,7 @@ class TrackingStamp implements StampInterface
         return $this;
     }
 
-    public function getWorkerId(): string
+    public function getWorkerId(): ?int
     {
         return $this->workerId;
     }

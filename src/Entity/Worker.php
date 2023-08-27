@@ -78,9 +78,10 @@ class Worker
         $command = [
             WorkerCommand::getDefaultName(),
             '-vv',
+            '--no-debug',
+            "--no-interaction",
             '--id',
             $this->getId(),
-            "--no-interaction",
         ];
 
         if ($this->getMessageLimit() > 0) {

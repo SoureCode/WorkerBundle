@@ -1,5 +1,6 @@
 vendor/
 tests/app/var/data.db
+tests/app/var/logs/
 tests/app/var/run/
 tests/app/var/tmp/
 .phpunit.result.cache

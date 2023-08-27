@@ -78,7 +78,9 @@ class WorkerTest extends AbstractBaseTest
             $this->assertSame(0, $worker->getFailed(), 'No message has been failed');
             $this->assertCount(0, $worker->getMemoryUsage(), 'Memory usage has not been collected');
 
-            $this->workerManager->start($workerId);
+            $started = $this->workerManager->start($workerId);
+
+            self::assertTrue($started, 'Worker has been started');
 
             $this->messageBus->dispatch(new SleepMessage(2));
 

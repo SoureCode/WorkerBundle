@@ -34,11 +34,11 @@ monolog:
     console:
       type: console
       level: debug
-    #file: # @note for debugging
-    #  type: stream
-    #  path: '%kernel.project_dir%/var/output.log'
-    #  level: debug
-    #  channels: ['!event', '!doctrine']
+    file:
+      type: stream
+      path: '%kernel.project_dir%/var/logs/debug.log'
+      level: debug
+      channels: ['!event', '!doctrine']
 
 doctrine:
   dbal:

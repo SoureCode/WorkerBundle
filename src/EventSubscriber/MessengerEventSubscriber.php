@@ -34,7 +34,6 @@ class MessengerEventSubscriber implements EventSubscriberInterface
     private WorkerRepository $workerRepository;
     private MessengerMessageRepository $messengerMessageRepository;
     private SerializerInterface $serializer;
-    private ?Worker $worker = null;
     private DaemonManager $daemonManager;
 
     public function __construct(
@@ -71,6 +70,7 @@ class MessengerEventSubscriber implements EventSubscriberInterface
 
     public function onWorkerRunning(WorkerRunningEvent $event): void
     {
+        $this->logger->info('onWorkerRunning.');
         $worker = $this->getWorker();
 
         if (null !== $worker) {
@@ -192,8 +192,6 @@ class MessengerEventSubscriber implements EventSubscriberInterface
 
             $this->entityManager->flush();
         }
-
-        $this->worker = null;
     }
 
     public function onWorkerStarted(WorkerStartedEvent $event): void
@@ -211,17 +209,15 @@ class MessengerEventSubscriber implements EventSubscriberInterface
 
     private function getWorker(): ?Worker
     {
-        if (null === $this->worker) {
-            if (null === Worker::$currentId) {
-                return null;
-            }
-
-            $this->worker = $this->workerRepository->find(Worker::$currentId);
+        if (null === Worker::$currentId) {
+            return null;
         }
 
-        $this->entityManager->refresh($this->worker);
+        $worker = $this->workerRepository->find(Worker::$currentId);
 
-        return $this->worker;
+        $this->entityManager->refresh($worker);
+
+        return $worker;
     }
 
     public function onSendMessageToTransports(SendMessageToTransportsEvent $event): void

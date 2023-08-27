@@ -95,6 +95,10 @@ class WorkerManager
         $worker->setShouldExit(true);
         $this->entityManager->flush();
 
+        // Wait for next iteration and hope we can stop the worker gracefully.
+        // Just +1 second to be sure.
+        sleep(1 + $worker->getSleep());
+
         return $this->run([
             'command' => DaemonStopCommand::getDefaultName(),
             '-vv' => true,

@@ -130,7 +130,7 @@ class WorkerManager
             return 0;
         }
 
-        $exitCodes = [];
+        $exitCodes = [0, 0];
 
         foreach ($workers as $worker) {
             if ($worker->isRunning()) {
@@ -138,7 +138,7 @@ class WorkerManager
             }
         }
 
-        return max($exitCodes);
+        return max(...$exitCodes);
     }
 
     /**
@@ -167,7 +167,7 @@ class WorkerManager
             return 0;
         }
 
-        $exitCodes = [];
+        $exitCodes = [0, 0];
 
         foreach ($workers as $worker) {
             if (!$worker->isRunning()) {
@@ -175,7 +175,7 @@ class WorkerManager
             }
         }
 
-        return max($exitCodes);
+        return max(...$exitCodes);
     }
 
     public function getReceiverNames(): array

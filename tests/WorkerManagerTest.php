@@ -81,4 +81,22 @@ class WorkerManagerTest extends AbstractBaseTest
 
         $this->assertSame("failed", $this->workerManager->getGlobalFailureReceiverName());
     }
+
+    public function testDontFailIfNoWorkerIsRunning(): void
+    {
+        // Arrange
+        $worker = new Worker();
+        $worker->setTransports([
+            'async',
+        ]);
+
+        $this->entityManager->persist($worker);
+        $this->entityManager->flush();
+
+        // Act
+        $result = $this->workerManager->stopAll();
+
+        // Assert
+        $this->assertSame(0, $result);
+    }
 }

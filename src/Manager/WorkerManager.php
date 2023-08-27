@@ -14,7 +14,9 @@ use Symfony\Component\Console\Input\ArrayInput;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Filesystem\Path;
 use Symfony\Component\HttpKernel\KernelInterface;
+use Symfony\Component\Messenger\Transport\Receiver\ReceiverInterface;
 use Symfony\Component\Process\PhpExecutableFinder;
+use Symfony\Contracts\Service\ServiceProviderInterface;
 
 class WorkerManager
 {
@@ -23,13 +25,21 @@ class WorkerManager
     private WorkerRepository $workerRepository;
     private string $projectDirectory;
     private EntityManagerInterface $entityManager;
+    private ServiceProviderInterface $failureTransports;
+    private array $receiverNames;
+    private array $busIds;
+    private ?string $globalFailureReceiverName;
 
     public function __construct(
-        KernelInterface        $kernel,
-        EntityManagerInterface $entityManager,
-        LoggerInterface        $logger,
-        WorkerRepository       $workerRepository,
-        string                 $projectDirectory,
+        KernelInterface          $kernel,
+        EntityManagerInterface   $entityManager,
+        LoggerInterface          $logger,
+        WorkerRepository         $workerRepository,
+        string                   $projectDirectory,
+        ?string                  $globalFailureReceiverName,
+        ServiceProviderInterface $failureTransports,
+        array                    $receiverNames,
+        array                    $busIds,
     )
     {
         $this->kernel = $kernel;
@@ -37,6 +47,10 @@ class WorkerManager
         $this->logger = $logger;
         $this->workerRepository = $workerRepository;
         $this->projectDirectory = $projectDirectory;
+        $this->failureTransports = $failureTransports;
+        $this->receiverNames = $receiverNames;
+        $this->busIds = $busIds;
+        $this->globalFailureReceiverName = $globalFailureReceiverName;
     }
 
     /**
@@ -164,8 +178,28 @@ class WorkerManager
         return max($exitCodes);
     }
 
+    public function getReceiverNames(): array
+    {
+        return $this->receiverNames;
+    }
+
+    public function getBusIds(): array
+    {
+        return $this->busIds;
+    }
+
+    public function getFailureTransports(): ServiceProviderInterface
+    {
+        return $this->failureTransports;
+    }
+
+    public function getGlobalFailureReceiverName(): ?string
+    {
+        return $this->globalFailureReceiverName;
+    }
+
     /**
-     * @copyright From symfony/process component.
+     * @copyright Symfony Process Component.
      */
     private function escape(string $argument): string
     {
@@ -205,5 +239,34 @@ class WorkerManager
         }
 
         return array_merge([$php], $executableFinder->findArguments());
+    }
+
+    /**
+     * @copyright Symfony Messenger Component
+     */
+    protected function getFailureReceiver(string $name = null): ReceiverInterface
+    {
+        if (null === $name ??= $this->globalFailureReceiverName) {
+            throw new InvalidArgumentException(
+                sprintf('No default failure transport is defined. Available transports are: "%s".',
+                    implode('", "', $this->getFailureTransportNames())
+                ));
+        }
+
+        if (!$this->failureTransports->has($name)) {
+            throw new InvalidArgumentException(
+                sprintf('The "%s" failure transport was not found. Available transports are: "%s".',
+                    $name,
+                    implode('", "', $this->getFailureTransportNames())
+                )
+            );
+        }
+
+        return $this->failureTransports->get($name);
+    }
+
+    public function getFailureTransportNames(): array
+    {
+        return array_keys($this->failureTransports->getProvidedServices());
     }
 }

@@ -63,7 +63,11 @@ class SoureCodeWorkerBundle extends AbstractBundle
                 service(EntityManagerInterface::class),
                 service(LoggerInterface::class),
                 service('soure_code.worker.repository.worker'),
-                param('kernel.project_dir')
+                param('kernel.project_dir'),
+                abstract_arg('global_failure_transport'),
+                abstract_arg('failure_transports_locator'),
+                abstract_arg('receiver_names'),
+                abstract_arg('bus_ids'),
             ]);
 
         $services

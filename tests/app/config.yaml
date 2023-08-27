@@ -7,14 +7,23 @@ framework:
     storage_factory_id: session.storage.factory.native
   messenger:
     failure_transport: failed
+    default_bus: messenger.bus.default
     buses:
       messenger.bus.default:
         middleware:
           - doctrine_ping_connection
           - doctrine_close_connection
+      messenger.bus.high:
+        middleware:
+          - doctrine_ping_connection
+          - doctrine_close_connection
     transports:
       async: 'doctrine://default?auto_setup=0'
+      async_high:
+        dsn: 'doctrine://default?auto_setup=0&queue_name=high'
+        failure_transport: failed_high
       failed: 'doctrine://default?queue_name=failed'
+      failed_high: 'doctrine://default?queue_name=failed_high'
       sync: 'sync://'
 
     routing:

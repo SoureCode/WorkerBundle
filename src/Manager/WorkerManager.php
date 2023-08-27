@@ -187,6 +187,27 @@ class WorkerManager
         return !in_array(false, $stopped, true);
     }
 
+    public function stopAllGracefully(): bool
+    {
+        $workers = $this->workerRepository->findAll();
+
+        if (0 === count($workers)) {
+            $this->logger->warning('No workers found.');
+
+            return false;
+        }
+
+        $stopped = [];
+
+        foreach ($workers as $worker) {
+            if ($worker->isRunning()) {
+                $stopped[] = $this->stopGracefully($worker->getId());
+            }
+        }
+
+        return !in_array(false, $stopped, true);
+    }
+
     public function startAll(): bool
     {
         $workers = $this->workerRepository->findAll();

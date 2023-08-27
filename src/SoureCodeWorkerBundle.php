@@ -11,12 +11,14 @@ use SoureCode\Bundle\Worker\Command\WorkerStopCommand;
 use SoureCode\Bundle\Worker\DependencyInjection\WorkerCompilerPass;
 use SoureCode\Bundle\Worker\EventSubscriber\MessengerEventSubscriber;
 use SoureCode\Bundle\Worker\Manager\WorkerManager;
+use SoureCode\Bundle\Worker\MessageHandler\StartWorkerMessageHandler;
 use SoureCode\Bundle\Worker\Repository\MessengerMessageRepository;
 use SoureCode\Bundle\Worker\Repository\WorkerRepository;
 use Symfony\Component\Config\Definition\Configurator\DefinitionConfigurator;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ContainerConfigurator;
 use Symfony\Component\HttpKernel\Bundle\AbstractBundle;
+use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Messenger\Transport\Serialization\SerializerInterface;
 use function Symfony\Component\DependencyInjection\Loader\Configurator\abstract_arg;
 use function Symfony\Component\DependencyInjection\Loader\Configurator\param;
@@ -68,6 +70,7 @@ class SoureCodeWorkerBundle extends AbstractBundle
                 abstract_arg('failure_transports_locator'),
                 abstract_arg('receiver_names'),
                 abstract_arg('bus_ids'),
+                service(MessageBusInterface::class),
             ]);
 
         $services
@@ -118,6 +121,18 @@ class SoureCodeWorkerBundle extends AbstractBundle
             ->tag('console.command', [
                 'command' => 'worker:stop',
             ]);
+
+        $services->set('soure_code.message_handler.start_worker', StartWorkerMessageHandler::class)
+            ->args([
+                service('soure_code.worker.manager.worker'),
+            ])
+            ->tag('messenger.message_handler');
+
+        $services->set('soure_code.message_handler.stop_worker', StartWorkerMessageHandler::class)
+            ->args([
+                service('soure_code.worker.manager.worker'),
+            ])
+            ->tag('messenger.message_handler');
     }
 
     public function build(ContainerBuilder $container): void

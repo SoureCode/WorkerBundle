@@ -27,13 +27,15 @@ class WorkerStopCommand extends Command
     protected function configure(): void
     {
         $this->addOption('id', 'i', InputOption::VALUE_OPTIONAL, 'Worker ID')
-            ->addOption('all', 'a', InputOption::VALUE_NONE, 'Stop all workers');
+            ->addOption('all', 'a', InputOption::VALUE_NONE, 'Stop all workers')
+            ->addOption('async', null, InputOption::VALUE_NONE, 'Stop worker async');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $id = $input->getOption('id');
         $all = $input->getOption('all');
+        $async = $input->getOption('async');
 
         if ($id !== null && $all) {
             throw new \RuntimeException('You cannot specify both --id and --all');
@@ -41,6 +43,10 @@ class WorkerStopCommand extends Command
 
         if ($id === null && !$all) {
             throw new \RuntimeException('You must specify either --id or --all');
+        }
+
+        if ($all && $async) {
+            throw new \RuntimeException('You cannot specify both --all and --async');
         }
 
         if ($all) {
@@ -54,6 +60,16 @@ class WorkerStopCommand extends Command
         if (!is_numeric($id)) {
             // @todo support uuid?
             throw new \RuntimeException('Worker ID must be numeric');
+        }
+
+        if ($async) {
+            $result = $this->workerManager->stopAsync($id);
+
+            if ($result !== true) {
+                return $result;
+            }
+
+            return Command::SUCCESS;
         }
 
         return $this->workerManager->stop($id);

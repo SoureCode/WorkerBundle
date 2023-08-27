@@ -8,12 +8,16 @@ use InvalidArgumentException;
 use Psr\Log\LoggerInterface;
 use SoureCode\Bundle\Daemon\Command\DaemonStartCommand;
 use SoureCode\Bundle\Daemon\Command\DaemonStopCommand;
+use SoureCode\Bundle\Worker\Message\StartWorkerMessage;
+use SoureCode\Bundle\Worker\Message\StopWorkerMessage;
 use SoureCode\Bundle\Worker\Repository\WorkerRepository;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Component\Console\Input\ArrayInput;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Filesystem\Path;
 use Symfony\Component\HttpKernel\KernelInterface;
+use Symfony\Component\Messenger\MessageBusInterface;
+use Symfony\Component\Messenger\Stamp\DispatchAfterCurrentBusStamp;
 use Symfony\Component\Messenger\Transport\Receiver\ReceiverInterface;
 use Symfony\Component\Process\PhpExecutableFinder;
 use Symfony\Contracts\Service\ServiceProviderInterface;
@@ -29,6 +33,7 @@ class WorkerManager
     private array $receiverNames;
     private array $busIds;
     private ?string $globalFailureReceiverName;
+    private MessageBusInterface $messageBus;
 
     public function __construct(
         KernelInterface          $kernel,
@@ -40,6 +45,7 @@ class WorkerManager
         ServiceProviderInterface $failureTransports,
         array                    $receiverNames,
         array                    $busIds,
+        MessageBusInterface      $messageBus,
     )
     {
         $this->kernel = $kernel;
@@ -51,6 +57,47 @@ class WorkerManager
         $this->receiverNames = $receiverNames;
         $this->busIds = $busIds;
         $this->globalFailureReceiverName = $globalFailureReceiverName;
+        $this->messageBus = $messageBus;
+    }
+
+    /**
+     * @throws Exception
+     * @return true|int true if async or exit code
+     */
+    public function startAsync(int $id): true|int
+    {
+        if ($this->workerRepository->hasRunningWorkers()) {
+            $this->messageBus->dispatch(
+                new StartWorkerMessage($id),
+                [
+                    new DispatchAfterCurrentBusStamp(),
+                ]
+            );
+
+            return true;
+        }
+
+        return $this->start($id);
+    }
+
+    /**
+     * @throws Exception
+     * @return true|int true if async or exit code
+     */
+    public function stopAsync(int $id): true|int
+    {
+        if ($this->workerRepository->hasRunningWorkers()) {
+            $this->messageBus->dispatch(
+                new StopWorkerMessage($id),
+                [
+                    new DispatchAfterCurrentBusStamp(),
+                ]
+            );
+
+            return true;
+        }
+
+        return $this->stop($id);
     }
 
     /**

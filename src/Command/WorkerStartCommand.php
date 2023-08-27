@@ -27,20 +27,26 @@ class WorkerStartCommand extends Command
     protected function configure(): void
     {
         $this->addOption('id', 'i', InputOption::VALUE_REQUIRED, 'Worker ID')
-            ->addOption('all', 'a', InputOption::VALUE_NONE, 'Start all workers');
+            ->addOption('all', 'a', InputOption::VALUE_NONE, 'Start all workers')
+            ->addOption('async', null, InputOption::VALUE_NONE, 'Start worker async');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $id = $input->getOption('id');
         $all = $input->getOption('all');
+        $async = $input->getOption('async');
 
-        if(null !== $id && $all) {
+        if (null !== $id && $all) {
             throw new \RuntimeException('You can not use --id and --all at the same time');
         }
 
-        if(null === $id && !$all) {
+        if (null === $id && !$all) {
             throw new \RuntimeException('You must use --id or --all');
+        }
+
+        if ($all && $async) {
+            throw new \RuntimeException('You can not use --all and --async at the same time');
         }
 
         if ($all) {
@@ -54,6 +60,16 @@ class WorkerStartCommand extends Command
         if (!is_numeric($id)) {
             // @todo support uuid?
             throw new \RuntimeException('Worker ID must be numeric');
+        }
+
+        if ($async) {
+            $result = $this->workerManager->startAsync($id);
+
+            if ($result !== true) {
+                return $result;
+            }
+
+            return Command::SUCCESS;
         }
 
         return $this->workerManager->start($id);

@@ -36,6 +36,14 @@ abstract class AbstractBaseTest extends KernelTestCase
         return $kernel;
     }
 
+    protected function assertProcessExists(string $process): void
+    {
+        $processes = $this->getProcesses();
+        $processList = implode(PHP_EOL, $processes);
+
+        $this->assertStringContainsString($process, $processList);
+    }
+
     protected function getProcesses(): array
     {
         $whoami = exec('whoami');
@@ -45,14 +53,6 @@ abstract class AbstractBaseTest extends KernelTestCase
         exec($command, $output);
 
         return array_values(array_map('trim', $output));
-    }
-
-    protected function assertProcessExists(string $process): void
-    {
-        $processes = $this->getProcesses();
-        $processList = implode(PHP_EOL, $processes);
-
-        $this->assertStringContainsString($process, $processList);
     }
 
     protected function assertProcessNotExists(string $process): void

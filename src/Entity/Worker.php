@@ -6,10 +6,7 @@ use DateTimeImmutable;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Psr\Clock\ClockInterface;
-use SoureCode\Bundle\Daemon\Manager\DaemonManager;
 use SoureCode\Bundle\Worker\Command\WorkerCommand;
-use SoureCode\Bundle\Worker\Manager\WorkerManager;
-use Symfony\Component\Messenger\Event\WorkerRunningEvent;
 
 #[ORM\Entity()]
 class Worker
@@ -240,30 +237,6 @@ class Worker
         $this->memoryUsage = $memoryUsage;
     }
 
-    public function addMemoryUsage(ClockInterface $clock): void
-    {
-        $memoryUsage = memory_get_usage(true);
-        $now = $clock->now();
-        $key = $now->format('Y-m-d\TH:i:s');
-
-        if (array_key_exists($key, $this->memoryUsage)) {
-            $this->memoryUsage[$key] = max(
-                $this->memoryUsage[$key],
-                $memoryUsage
-            );
-        } else {
-            $this->memoryUsage[$key] = $memoryUsage;
-        }
-
-        // remove older than 1 hour
-        $this->memoryUsage = array_filter($this->memoryUsage, static function ($key) use ($now) {
-            $date = new \DateTimeImmutable($key);
-            $diff = $now->getTimestamp() - $date->getTimestamp();
-
-            return $diff < 3600;
-        }, ARRAY_FILTER_USE_KEY);
-    }
-
     public function getStartedAt(): ?DateTimeImmutable
     {
         return $this->startedAt;
@@ -284,20 +257,6 @@ class Worker
     public function setHandled(?int $handled): void
     {
         $this->handled = $handled;
-    }
-
-    public function incrementHandled(): int
-    {
-        $this->handled++;
-
-        return $this->handled;
-    }
-
-    public function incrementFailed(): int
-    {
-        $this->failed++;
-
-        return $this->failed;
     }
 
     public function getFailed(): ?int
@@ -340,10 +299,50 @@ class Worker
         $this->addMemoryUsage($clock);
     }
 
+    private function online(DateTimeImmutable $now): void
+    {
+        $this->setStatus(WorkerStatus::IDLE);
+        $this->setShouldExit(false);
+        $this->setStartedAt($now);
+        $this->setLastHeartbeat($now);
+    }
+
+    public function addMemoryUsage(ClockInterface $clock): void
+    {
+        $memoryUsage = memory_get_usage(true);
+        $now = $clock->now();
+        $key = $now->format('Y-m-d\TH:i:s');
+
+        if (array_key_exists($key, $this->memoryUsage)) {
+            $this->memoryUsage[$key] = max(
+                $this->memoryUsage[$key],
+                $memoryUsage
+            );
+        } else {
+            $this->memoryUsage[$key] = $memoryUsage;
+        }
+
+        // remove older than 1 hour
+        $this->memoryUsage = array_filter($this->memoryUsage, static function ($key) use ($now) {
+            $date = new DateTimeImmutable($key);
+            $diff = $now->getTimestamp() - $date->getTimestamp();
+
+            return $diff < 3600;
+        }, ARRAY_FILTER_USE_KEY);
+    }
+
     public function onWorkerStopped(ClockInterface $clock): void
     {
         $this->offline();
         $this->addMemoryUsage($clock);
+    }
+
+    public function offline(): void
+    {
+        $this->setStatus(WorkerStatus::OFFLINE);
+        $this->setStartedAt(null);
+        $this->setShouldExit(false);
+        $this->setLastHeartbeat(null);
     }
 
     public function onWorkerMessageFailed(ClockInterface $clock): void
@@ -353,11 +352,25 @@ class Worker
         $this->addMemoryUsage($clock);
     }
 
+    public function incrementFailed(): int
+    {
+        $this->failed++;
+
+        return $this->failed;
+    }
+
     public function onWorkerMessageHandled(ClockInterface $clock): void
     {
         $this->setLastHeartbeat($clock->now());
         $this->incrementHandled();
         $this->addMemoryUsage($clock);
+    }
+
+    public function incrementHandled(): int
+    {
+        $this->handled++;
+
+        return $this->handled;
     }
 
     public function onWorkerMessageReceived(ClockInterface $clock): void
@@ -371,21 +384,5 @@ class Worker
     {
         $this->setLastHeartbeat($clock->now());
         $this->addMemoryUsage($clock);
-    }
-
-    public function offline(): void
-    {
-        $this->setStatus(WorkerStatus::OFFLINE);
-        $this->setStartedAt(null);
-        $this->setShouldExit(false);
-        $this->setLastHeartbeat(null);
-    }
-
-    private function online(DateTimeImmutable $now): void
-    {
-        $this->setStatus(WorkerStatus::IDLE);
-        $this->setShouldExit(false);
-        $this->setStartedAt($now);
-        $this->setLastHeartbeat($now);
     }
 }

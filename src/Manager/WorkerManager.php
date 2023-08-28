@@ -32,11 +32,6 @@ class WorkerManager
     private DaemonManager $daemonManager;
     private ClockInterface $clock;
 
-    public static function getDaemonId(int $id): string
-    {
-        return 'soure_code_worker_' . $id;
-    }
-
     public function __construct(
         DaemonManager            $daemonManager,
         EntityManagerInterface   $entityManager,
@@ -84,26 +79,6 @@ class WorkerManager
         return $this->start($id);
     }
 
-    /**
-     * @return true|int true if async or exit code
-     * @throws Exception
-     */
-    public function stopAsync(int $id): true|int
-    {
-        if ($this->workerRepository->hasRunningWorkers()) {
-            $this->messageBus->dispatch(
-                new StopWorkerMessage($id),
-                [
-                    new DispatchAfterCurrentBusStamp(),
-                ]
-            );
-
-            return true;
-        }
-
-        return $this->stop($id);
-    }
-
     public function start(int $id): bool
     {
         $worker = $this->workerRepository->find($id);
@@ -133,6 +108,48 @@ class WorkerManager
         $daemonId = self::getDaemonId($id);
 
         return $this->daemonManager->start($daemonId, $commandLine);
+    }
+
+    private function getPhpBinary(): ?array
+    {
+        $executableFinder = new PhpExecutableFinder();
+        $php = $executableFinder->find(false);
+
+        if (false === $php) {
+            return null;
+        }
+
+        return array_merge([$php], $executableFinder->findArguments());
+    }
+
+    private function getConsolePath(): string
+    {
+        return Path::join($this->projectDirectory, 'bin', 'console');
+    }
+
+    public static function getDaemonId(int $id): string
+    {
+        return 'soure_code_worker_' . $id;
+    }
+
+    /**
+     * @return true|int true if async or exit code
+     * @throws Exception
+     */
+    public function stopAsync(int $id): true|int
+    {
+        if ($this->workerRepository->hasRunningWorkers()) {
+            $this->messageBus->dispatch(
+                new StopWorkerMessage($id),
+                [
+                    new DispatchAfterCurrentBusStamp(),
+                ]
+            );
+
+            return true;
+        }
+
+        return $this->stop($id);
     }
 
     public function stop(int $id): bool
@@ -247,23 +264,6 @@ class WorkerManager
     public function getGlobalFailureReceiverName(): ?string
     {
         return $this->globalFailureReceiverName;
-    }
-
-    private function getConsolePath(): string
-    {
-        return Path::join($this->projectDirectory, 'bin', 'console');
-    }
-
-    private function getPhpBinary(): ?array
-    {
-        $executableFinder = new PhpExecutableFinder();
-        $php = $executableFinder->find(false);
-
-        if (false === $php) {
-            return null;
-        }
-
-        return array_merge([$php], $executableFinder->findArguments());
     }
 
     public function getFailureTransportNames(): array

@@ -6,7 +6,6 @@ use DateTimeInterface;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use JsonException;
-use SoureCode\Bundle\Worker\Repository\MessengerMessageRepository;
 use Symfony\Component\Messenger\Envelope;
 use Symfony\Component\Messenger\Transport\Serialization\SerializerInterface;
 
@@ -68,17 +67,17 @@ class MessengerMessage
         ]);
     }
 
-    public function getHeaders(): string
-    {
-        return $this->headers;
-    }
-
     /**
      * @throws JsonException
      */
     public function getDecodedHeaders(): array
     {
         return json_decode($this->headers, true, 512, JSON_THROW_ON_ERROR);
+    }
+
+    public function getHeaders(): string
+    {
+        return $this->headers;
     }
 
     public function setHeaders(string $headers): MessengerMessage

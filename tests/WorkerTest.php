@@ -2,8 +2,10 @@
 
 namespace SoureCode\Bundle\Worker\Tests;
 
+use Closure;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Tools\SchemaTool;
+use RuntimeException;
 use SoureCode\Bundle\Worker\Entity\Worker;
 use SoureCode\Bundle\Worker\Entity\WorkerStatus;
 use SoureCode\Bundle\Worker\Manager\WorkerManager;
@@ -21,44 +23,6 @@ class WorkerTest extends AbstractBaseTest
     private ?MessengerMessageRepository $messengerMessageRepository = null;
     private ?SerializerInterface $serializer;
     private ?WorkerManager $workerManager = null;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $container = self::getContainer();
-
-        $this->workerRepository = $container->get(WorkerRepository::class);
-        $this->messengerMessageRepository = $container->get(MessengerMessageRepository::class);
-        $this->entityManager = $container->get(EntityManagerInterface::class);
-        $this->messageBus = $container->get(MessageBusInterface::class);
-        $this->serializer = $container->get(SerializerInterface::class);
-        $this->workerManager = $container->get(WorkerManager::class);
-
-        $schemaTool = new SchemaTool($this->entityManager);
-        $schemaTool->updateSchema([
-            $this->entityManager->getClassMetadata(Worker::class),
-        ]);
-    }
-
-    protected function tearDown(): void
-    {
-        parent::tearDown();
-
-        $schemaTool = new SchemaTool($this->entityManager);
-        $schemaTool->dropDatabase();
-
-        $this->entityManager->getConnection()->close();
-        $this->entityManager->clear();
-        $this->entityManager->close();
-
-        $this->workerRepository = null;
-        $this->messengerMessageRepository = null;
-        $this->entityManager = null;
-        $this->messageBus = null;
-        $this->serializer = null;
-        $this->workerManager = null;
-    }
 
     public function testWorkerStart(): void
     {
@@ -116,7 +80,7 @@ class WorkerTest extends AbstractBaseTest
         }
     }
 
-    private function waitUntil(\Closure $closure, int $timeout = 10): void
+    private function waitUntil(Closure $closure, int $timeout = 10): void
     {
         $iteration = 0;
 
@@ -126,11 +90,49 @@ class WorkerTest extends AbstractBaseTest
             }
 
             if ($iteration > $timeout) {
-                throw new \RuntimeException('Timeout');
+                throw new RuntimeException('Timeout');
             }
 
             $iteration++;
             sleep(1);
         }
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $container = self::getContainer();
+
+        $this->workerRepository = $container->get(WorkerRepository::class);
+        $this->messengerMessageRepository = $container->get(MessengerMessageRepository::class);
+        $this->entityManager = $container->get(EntityManagerInterface::class);
+        $this->messageBus = $container->get(MessageBusInterface::class);
+        $this->serializer = $container->get(SerializerInterface::class);
+        $this->workerManager = $container->get(WorkerManager::class);
+
+        $schemaTool = new SchemaTool($this->entityManager);
+        $schemaTool->updateSchema([
+            $this->entityManager->getClassMetadata(Worker::class),
+        ]);
+    }
+
+    protected function tearDown(): void
+    {
+        parent::tearDown();
+
+        $schemaTool = new SchemaTool($this->entityManager);
+        $schemaTool->dropDatabase();
+
+        $this->entityManager->getConnection()->close();
+        $this->entityManager->clear();
+        $this->entityManager->close();
+
+        $this->workerRepository = null;
+        $this->messengerMessageRepository = null;
+        $this->entityManager = null;
+        $this->messageBus = null;
+        $this->serializer = null;
+        $this->workerManager = null;
     }
 }

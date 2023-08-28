@@ -2,6 +2,7 @@
 
 namespace SoureCode\Bundle\Worker\Command;
 
+use RuntimeException;
 use SoureCode\Bundle\Worker\Manager\WorkerManager;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
@@ -38,15 +39,15 @@ class WorkerStopCommand extends Command
         $async = $input->getOption('async');
 
         if ($id !== null && $all) {
-            throw new \RuntimeException('You cannot specify both --id and --all');
+            throw new RuntimeException('You cannot specify both --id and --all');
         }
 
         if ($id === null && !$all) {
-            throw new \RuntimeException('You must specify either --id or --all');
+            throw new RuntimeException('You must specify either --id or --all');
         }
 
         if ($all && $async) {
-            throw new \RuntimeException('You cannot specify both --all and --async');
+            throw new RuntimeException('You cannot specify both --all and --async');
         }
 
         if ($all) {
@@ -54,12 +55,12 @@ class WorkerStopCommand extends Command
         }
 
         if ($id === null) {
-            throw new \RuntimeException('Missing worker ID');
+            throw new RuntimeException('Missing worker ID');
         }
 
         if (!is_numeric($id)) {
             // @todo support uuid?
-            throw new \RuntimeException('Worker ID must be numeric');
+            throw new RuntimeException('Worker ID must be numeric');
         }
 
         if ($async) {

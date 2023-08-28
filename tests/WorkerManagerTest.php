@@ -20,45 +20,6 @@ class WorkerManagerTest extends AbstractBaseTest
     private ?SerializerInterface $serializer;
     private ?WorkerManager $workerManager = null;
 
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $container = self::getContainer();
-
-        $this->workerRepository = $container->get(WorkerRepository::class);
-        $this->messengerMessageRepository = $container->get(MessengerMessageRepository::class);
-        $this->entityManager = $container->get(EntityManagerInterface::class);
-        $this->messageBus = $container->get(MessageBusInterface::class);
-        $this->serializer = $container->get(SerializerInterface::class);
-        $this->workerManager = $container->get(WorkerManager::class);
-
-        $schemaTool = new SchemaTool($this->entityManager);
-        $schemaTool->updateSchema([
-            $this->entityManager->getClassMetadata(Worker::class),
-        ]);
-    }
-
-    protected function tearDown(): void
-    {
-        parent::tearDown();
-
-        $schemaTool = new SchemaTool($this->entityManager);
-        $schemaTool->dropDatabase();
-
-        $this->entityManager->getConnection()->close();
-        $this->entityManager->clear();
-        $this->entityManager->close();
-
-        $this->workerRepository = null;
-        $this->messengerMessageRepository = null;
-        $this->entityManager = null;
-        $this->messageBus = null;
-        $this->serializer = null;
-        $this->workerManager = null;
-    }
-
-
     public function testManagerCompilerPass(): void
     {
         $this->assertEquals([
@@ -97,6 +58,44 @@ class WorkerManagerTest extends AbstractBaseTest
         $result = $this->workerManager->stopAll();
 
         // Assert
-        $this->assertTrue( $result);
+        $this->assertTrue($result);
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $container = self::getContainer();
+
+        $this->workerRepository = $container->get(WorkerRepository::class);
+        $this->messengerMessageRepository = $container->get(MessengerMessageRepository::class);
+        $this->entityManager = $container->get(EntityManagerInterface::class);
+        $this->messageBus = $container->get(MessageBusInterface::class);
+        $this->serializer = $container->get(SerializerInterface::class);
+        $this->workerManager = $container->get(WorkerManager::class);
+
+        $schemaTool = new SchemaTool($this->entityManager);
+        $schemaTool->updateSchema([
+            $this->entityManager->getClassMetadata(Worker::class),
+        ]);
+    }
+
+    protected function tearDown(): void
+    {
+        parent::tearDown();
+
+        $schemaTool = new SchemaTool($this->entityManager);
+        $schemaTool->dropDatabase();
+
+        $this->entityManager->getConnection()->close();
+        $this->entityManager->clear();
+        $this->entityManager->close();
+
+        $this->workerRepository = null;
+        $this->messengerMessageRepository = null;
+        $this->entityManager = null;
+        $this->messageBus = null;
+        $this->serializer = null;
+        $this->workerManager = null;
     }
 }

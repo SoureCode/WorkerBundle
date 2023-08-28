@@ -3,8 +3,7 @@
 namespace SoureCode\Bundle\Worker\Messenger;
 
 use DateTimeImmutable;
-use DateTimeInterface;
-use Symfony\Component\Clock\Clock;
+use LogicException;
 use Symfony\Component\Clock\MonotonicClock;
 use Symfony\Component\Messenger\Stamp\StampInterface;
 
@@ -18,7 +17,7 @@ class TrackingStamp implements StampInterface
     private ?string $transport = null;
 
     public function __construct(
-        ?string $workerId = null,
+        ?string            $workerId = null,
         ?DateTimeImmutable $dispatchedAt = null,
     )
     {
@@ -45,7 +44,7 @@ class TrackingStamp implements StampInterface
     public function markFinished(): self
     {
         if (!$this->isReceived()) {
-            throw new \LogicException('Message was not received.');
+            throw new LogicException('Message was not received.');
         }
 
         $now = (new MonotonicClock())->now();
@@ -54,6 +53,11 @@ class TrackingStamp implements StampInterface
         $this->memoryUsage[$now->format('Y-m-d\TH:i:s.u')] = memory_get_usage(true);
 
         return $this;
+    }
+
+    public function isReceived(): bool
+    {
+        return null !== $this->receivedAt;
     }
 
     public function getWorkerId(): ?int
@@ -84,11 +88,6 @@ class TrackingStamp implements StampInterface
     public function getTransport(): ?string
     {
         return $this->transport;
-    }
-
-    public function isReceived(): bool
-    {
-        return null !== $this->receivedAt;
     }
 
     public function isFinished(): bool

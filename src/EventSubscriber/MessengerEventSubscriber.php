@@ -25,6 +25,7 @@ use Symfony\Component\Messenger\Event\WorkerStartedEvent;
 use Symfony\Component\Messenger\Event\WorkerStoppedEvent;
 use Symfony\Component\Messenger\Exception\LogicException;
 use Symfony\Component\Messenger\Transport\Serialization\SerializerInterface;
+use function class_exists;
 
 class MessengerEventSubscriber implements EventSubscriberInterface
 {
@@ -70,7 +71,6 @@ class MessengerEventSubscriber implements EventSubscriberInterface
 
     public function onWorkerRunning(WorkerRunningEvent $event): void
     {
-        $this->logger->info('onWorkerRunning.');
         $worker = $this->getWorker();
 
         if (null !== $worker) {
@@ -93,12 +93,25 @@ class MessengerEventSubscriber implements EventSubscriberInterface
         }
     }
 
+    private function getWorker(): ?Worker
+    {
+        if (null === Worker::$currentId) {
+            return null;
+        }
+
+        $worker = $this->workerRepository->find(Worker::$currentId);
+
+        $this->entityManager->refresh($worker);
+
+        return $worker;
+    }
+
     public function onWorkerMessageReceived(WorkerMessageReceivedEvent $event): void
     {
         $envelope = $event->getEnvelope();
         $stamp = $envelope->last(TrackingStamp::class);
 
-        if (\class_exists('Symfony\\Component\\Scheduler\\Messenger\\ScheduledStamp') && $scheduledStamp = $envelope->last('Symfony\\Component\\Scheduler\\Messenger\\ScheduledStamp')) {
+        if (class_exists('Symfony\\Component\\Scheduler\\Messenger\\ScheduledStamp') && $scheduledStamp = $envelope->last('Symfony\\Component\\Scheduler\\Messenger\\ScheduledStamp')) {
             // scheduler transport doesn't trigger SendMessageToTransportsEvent
             $stamp = new TrackingStamp(Worker::$currentId, $scheduledStamp->messageContext->triggeredAt);
         }
@@ -162,6 +175,18 @@ class MessengerEventSubscriber implements EventSubscriberInterface
         }
     }
 
+    private function findDoctrineReceivedStamp(Envelope $envelope): ?DoctrineReceivedStamp
+    {
+        /** @var DoctrineReceivedStamp|null $doctrineReceivedStamp */
+        $doctrineReceivedStamp = $envelope->last(DoctrineReceivedStamp::class);
+
+        if (null === $doctrineReceivedStamp) {
+            return null;
+        }
+
+        return $doctrineReceivedStamp;
+    }
+
     public function onWorkerMessageFailed(WorkerMessageFailedEvent $event): void
     {
         if (!$stamp = $event->getEnvelope()->last(TrackingStamp::class)) {
@@ -207,36 +232,11 @@ class MessengerEventSubscriber implements EventSubscriberInterface
         }
     }
 
-    private function getWorker(): ?Worker
-    {
-        if (null === Worker::$currentId) {
-            return null;
-        }
-
-        $worker = $this->workerRepository->find(Worker::$currentId);
-
-        $this->entityManager->refresh($worker);
-
-        return $worker;
-    }
-
     public function onSendMessageToTransports(SendMessageToTransportsEvent $event): void
     {
         $event->setEnvelope(
             $event->getEnvelope()
                 ->with(new TrackingStamp())
         );
-    }
-
-    private function findDoctrineReceivedStamp(Envelope $envelope): ?DoctrineReceivedStamp
-    {
-        /** @var DoctrineReceivedStamp|null $doctrineReceivedStamp */
-        $doctrineReceivedStamp = $envelope->last(DoctrineReceivedStamp::class);
-
-        if (null === $doctrineReceivedStamp) {
-            return null;
-        }
-
-        return $doctrineReceivedStamp;
     }
 }

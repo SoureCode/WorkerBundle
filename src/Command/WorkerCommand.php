@@ -4,6 +4,7 @@ namespace SoureCode\Bundle\Worker\Command;
 
 use Psr\Container\ContainerInterface;
 use Psr\Log\LoggerInterface;
+use RuntimeException;
 use SoureCode\Bundle\Worker\Entity\Worker;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Input\InputInterface;
@@ -55,12 +56,12 @@ class WorkerCommand extends BaseConsumeMessagesCommand
         $id = $input->getOption('id');
 
         if ($id === null) {
-            throw new \RuntimeException('Missing worker ID');
+            throw new RuntimeException('Missing worker ID');
         }
 
         if (!is_numeric($id)) {
             // @todo support uuid?
-            throw new \RuntimeException('Worker ID must be numeric');
+            throw new RuntimeException('Worker ID must be numeric');
         }
 
         Worker::$currentId = (int)$id;

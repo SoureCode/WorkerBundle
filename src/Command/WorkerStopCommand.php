@@ -29,6 +29,7 @@ class WorkerStopCommand extends Command
     {
         $this->addOption('id', 'i', InputOption::VALUE_OPTIONAL, 'Worker ID')
             ->addOption('all', 'a', InputOption::VALUE_NONE, 'Stop all workers')
+            ->addOption('by-files', null, InputOption::VALUE_NONE, 'Stop workers by their pid files')
             ->addOption('async', null, InputOption::VALUE_NONE, 'Stop worker async');
     }
 
@@ -37,6 +38,7 @@ class WorkerStopCommand extends Command
         $id = $input->getOption('id');
         $all = $input->getOption('all');
         $async = $input->getOption('async');
+        $byFiles = $input->getOption('by-files');
 
         if ($id !== null && $all) {
             throw new RuntimeException('You cannot specify both --id and --all');
@@ -50,8 +52,16 @@ class WorkerStopCommand extends Command
             throw new RuntimeException('You cannot specify both --all and --async');
         }
 
+        if ($byFiles && $async) {
+            throw new RuntimeException('You cannot specify both --by-files and --async');
+        }
+
+        if ($byFiles && $id) {
+            throw new RuntimeException('You cannot specify both --by-files and --id');
+        }
+
         if ($all) {
-            return $this->workerManager->stopAll();
+            return $this->workerManager->stopAll($byFiles ?? false);
         }
 
         if ($id === null) {

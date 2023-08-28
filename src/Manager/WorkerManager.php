@@ -183,8 +183,16 @@ class WorkerManager
         return true;
     }
 
-    public function stopAll(): bool
+    /**
+     * @param bool $byPidFiles If true, the pid files will be used to stop the workers, not the database.
+     * @return bool true if all workers were stopped successfully
+     */
+    public function stopAll(bool $byPidFiles = false): bool
     {
+        if ($byPidFiles) {
+            return $this->daemonManager->stopAll('/^soure_code_worker_\d+$/');
+        }
+
         $workers = $this->workerRepository->findAll();
 
         if (0 === count($workers)) {

@@ -73,7 +73,7 @@ class WorkerTest extends AbstractBaseTest
             $this->assertEquals(WorkerStatus::OFFLINE, $worker->getStatus(), 'Worker is offline');
             $this->assertSame(1, $worker->getHandled(), 'All messages has been handled');
             $this->assertSame(0, $worker->getFailed(), 'No message has been failed');
-            $this->assertTrue(count($worker->getMemoryUsage()) > 0, 'Memory usage has been collected');
+            $this->assertNotEmpty($worker->getMemoryUsage(), 'Memory usage has been collected');
         } finally {
             // ensures that the worker is stopped, even if the test fails
             $this->workerManager->stop($worker->getId());

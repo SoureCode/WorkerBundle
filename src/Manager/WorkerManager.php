@@ -20,6 +20,7 @@ use Symfony\Contracts\Service\ServiceProviderInterface;
 
 class WorkerManager
 {
+    public static string $daemonPrefix = 'soure_code_worker_';
     private LoggerInterface $logger;
     private WorkerRepository $workerRepository;
     private string $projectDirectory;
@@ -60,12 +61,17 @@ class WorkerManager
     }
 
     /**
-     * @return true|int true if async or exit code
-     * @throws Exception
+     * @return bool true if start message was dispatched or worker was started, depends on the current state
      */
-    public function startAsync(int $id): true|int
+    public function startAsync(Worker|int $workerOrId): bool
     {
         if ($this->workerRepository->hasRunningWorkers()) {
+            $id = $workerOrId;
+
+            if ($workerOrId instanceof Worker) {
+                $id = $workerOrId->getId();
+            }
+
             $this->messageBus->dispatch(
                 new StartWorkerMessage($id),
                 [
@@ -76,24 +82,28 @@ class WorkerManager
             return true;
         }
 
-        return $this->start($id);
+        return $this->start($workerOrId);
     }
 
-    public function start(int $id): bool
+    public function start(Worker|int $workerOrId): bool
     {
-        $worker = $this->workerRepository->find($id);
+        $worker = $workerOrId;
 
-        if (null === $worker) {
-            throw new InvalidArgumentException(sprintf('Worker with id "%s" not found.', $id));
+        if (is_int($workerOrId)) {
+            $worker = $this->workerRepository->find($workerOrId);
+
+            if (null === $worker) {
+                throw new InvalidArgumentException(sprintf('Worker with id "%s" not found.', $workerOrId));
+            }
         }
 
         if ($worker->isRunning()) {
-            $this->logger->warning(sprintf('Worker with id "%s" is already running.', $id));
+            $this->logger->warning(sprintf('Worker with id "%s" is already running.', $worker->getId()));
 
             return 0;
         }
 
-        $worker->setShouldExit(false);
+        $worker->offline();
 
         $this->entityManager->flush();
 
@@ -105,7 +115,7 @@ class WorkerManager
 
         $commandLine = implode(" ", $command);
 
-        $daemonId = self::getDaemonId($id);
+        $daemonId = self::getDaemonId($worker->getId());
 
         return $this->daemonManager->start($daemonId, $commandLine);
     }
@@ -129,18 +139,23 @@ class WorkerManager
 
     public static function getDaemonId(int $id): string
     {
-        return 'soure_code_worker_' . $id;
+        return self::$daemonPrefix . $id;
     }
 
     /**
-     * @return true|int true if async or exit code
-     * @throws Exception
+     * @return bool true if stop message was dispatched or worker was stopped, depends on the current state
      */
-    public function stopAsync(int $id): true|int
+    public function stopAsync(Worker|int $workerOrId, int $timeout = 10, ?array $signals = null): bool
     {
         if ($this->workerRepository->hasRunningWorkers()) {
+            $id = $workerOrId;
+
+            if ($workerOrId instanceof Worker) {
+                $id = $workerOrId->getId();
+            }
+
             $this->messageBus->dispatch(
-                new StopWorkerMessage($id),
+                new StopWorkerMessage($id, $timeout, $signals),
                 [
                     new DispatchAfterCurrentBusStamp(),
                 ]
@@ -149,30 +164,40 @@ class WorkerManager
             return true;
         }
 
-        return $this->stop($id);
+        return $this->stop($workerOrId);
     }
 
-    public function stop(int $id): bool
+    public function stop(Worker|int $workerOrId, int $timeout = 10, ?array $signals = null): bool
     {
-        if (!$this->stopGracefully($id)) {
+        if (!$this->stopGracefully($workerOrId)) {
             return false;
+        }
+
+        $id = $workerOrId;
+
+        if ($workerOrId instanceof Worker) {
+            $id = $workerOrId->getId();
         }
 
         $daemonId = self::getDaemonId($id);
 
-        return $this->daemonManager->stop($daemonId);
+        return $this->daemonManager->stop($daemonId, $timeout, $signals);
     }
 
-    public function stopGracefully(int $id): bool
+    public function stopGracefully(Worker|int $workerOrId): bool
     {
-        $worker = $this->workerRepository->find($id);
+        $worker = $workerOrId;
 
-        if (null === $worker) {
-            throw new InvalidArgumentException(sprintf('Worker with id "%s" not found.', $id));
+        if (is_int($worker)) {
+            $worker = $this->workerRepository->find($workerOrId);
+
+            if (null === $worker) {
+                throw new InvalidArgumentException(sprintf('Worker with id "%s" not found.', $workerOrId));
+            }
         }
 
         if (!$worker->isRunning()) {
-            $this->logger->warning(sprintf('Worker with id "%s" is not running.', $id));
+            $this->logger->warning(sprintf('Worker with id "%s" is not running.', $worker->getId()));
 
             return false;
         }
@@ -187,10 +212,10 @@ class WorkerManager
      * @param bool $byPidFiles If true, the pid files will be used to stop the workers, not the database.
      * @return bool true if all workers were stopped successfully
      */
-    public function stopAll(bool $byPidFiles = false): bool
+    public function stopAll(bool $byPidFiles = false, int $timeout = 10, ?array $signals = null): bool
     {
         if ($byPidFiles) {
-            return $this->daemonManager->stopAll('/^soure_code_worker_\d+$/');
+            return $this->daemonManager->stopAll('/^soure_code_worker_\d+$/', $timeout, $signals);
         }
 
         $workers = $this->workerRepository->findAll();
@@ -205,7 +230,7 @@ class WorkerManager
 
         foreach ($workers as $worker) {
             if ($worker->isRunning()) {
-                $stopped[] = $this->stop($worker->getId());
+                $stopped[] = $this->stop($worker, $timeout, $signals);
             }
         }
 
@@ -226,7 +251,7 @@ class WorkerManager
 
         foreach ($workers as $worker) {
             if ($worker->isRunning()) {
-                $stopped[] = $this->stopGracefully($worker->getId());
+                $stopped[] = $this->stopGracefully($worker);
             }
         }
 
@@ -247,7 +272,7 @@ class WorkerManager
 
         foreach ($workers as $worker) {
             if (!$worker->isRunning()) {
-                $started[] = $this->start($worker->getId());
+                $started[] = $this->start($worker);
             }
         }
 

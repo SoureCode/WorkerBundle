@@ -34,15 +34,13 @@ class WorkerTest extends AbstractBaseTest
         $this->entityManager->persist($worker);
         $this->entityManager->flush();
 
-        $workerId = $worker->getId();
-
         try {
             $this->assertEquals(WorkerStatus::OFFLINE, $worker->getStatus(), 'Worker is offline');
             $this->assertSame(0, $worker->getHandled(), 'No message has been handled');
             $this->assertSame(0, $worker->getFailed(), 'No message has been failed');
             $this->assertCount(0, $worker->getMemoryUsage(), 'Memory usage has not been collected');
 
-            $started = $this->workerManager->start($workerId);
+            $started = $this->workerManager->start($worker);
 
             self::assertTrue($started, 'Worker has been started');
 
@@ -65,7 +63,7 @@ class WorkerTest extends AbstractBaseTest
                 return $worker->getStatus() === WorkerStatus::IDLE;
             });
 
-            $this->workerManager->stop($workerId);
+            $this->workerManager->stop($worker);
 
             // refresh again, as the worker changed the status to offline
             $this->entityManager->refresh($worker);
@@ -76,7 +74,7 @@ class WorkerTest extends AbstractBaseTest
             $this->assertNotEmpty($worker->getMemoryUsage(), 'Memory usage has been collected');
         } finally {
             // ensures that the worker is stopped, even if the test fails
-            $this->workerManager->stop($worker->getId());
+            $this->workerManager->stop($worker);
         }
     }
 

@@ -28,6 +28,8 @@ class WorkerStopCommand extends Command
     protected function configure(): void
     {
         $this->addOption('id', 'i', InputOption::VALUE_OPTIONAL, 'Worker ID')
+            ->addOption('timeout', 't', InputOption::VALUE_OPTIONAL, 'Timeout in seconds', 10)
+            ->addOption('signal', 's', InputOption::VALUE_OPTIONAL | InputOption::VALUE_IS_ARRAY, 'Signals to send', null)
             ->addOption('all', 'a', InputOption::VALUE_NONE, 'Stop all workers')
             ->addOption('by-files', null, InputOption::VALUE_NONE, 'Stop workers by their pid files')
             ->addOption('async', null, InputOption::VALUE_NONE, 'Stop worker async');
@@ -39,6 +41,8 @@ class WorkerStopCommand extends Command
         $all = $input->getOption('all');
         $async = $input->getOption('async');
         $byFiles = $input->getOption('by-files');
+        $timeout = $input->getOption('timeout');
+        $signals = $input->getOption('signal');
 
         if ($id !== null && $all) {
             throw new RuntimeException('You cannot specify both --id and --all');
@@ -61,7 +65,7 @@ class WorkerStopCommand extends Command
         }
 
         if ($all) {
-            return $this->workerManager->stopAll($byFiles ?? false);
+            return $this->workerManager->stopAll($byFiles ?? false, $timeout, $signals);
         }
 
         if ($id === null) {
@@ -74,7 +78,7 @@ class WorkerStopCommand extends Command
         }
 
         if ($async) {
-            $result = $this->workerManager->stopAsync($id);
+            $result = $this->workerManager->stopAsync($id, $timeout, $signals);
 
             if ($result !== true) {
                 return $result;
@@ -83,6 +87,6 @@ class WorkerStopCommand extends Command
             return Command::SUCCESS;
         }
 
-        return $this->workerManager->stop($id);
+        return $this->workerManager->stop($id, $timeout, $signals);
     }
 }

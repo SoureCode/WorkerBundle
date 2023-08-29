@@ -18,6 +18,6 @@ class StopWorkerMessageHandler
 
     public function __invoke(StopWorkerMessage $message)
     {
-        $this->workerManager->stop($message->getId());
+        $this->workerManager->stop($message->getId(), $message->getTimeout(), $message->getSignals());
     }
 }

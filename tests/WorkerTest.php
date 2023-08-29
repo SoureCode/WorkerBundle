@@ -6,6 +6,7 @@ use Closure;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Tools\SchemaTool;
 use RuntimeException;
+use SoureCode\Bundle\Worker\Entity\MessengerMessage;
 use SoureCode\Bundle\Worker\Entity\Worker;
 use SoureCode\Bundle\Worker\Entity\WorkerStatus;
 use SoureCode\Bundle\Worker\Manager\WorkerManager;
@@ -38,7 +39,9 @@ class WorkerTest extends AbstractBaseTest
             $this->assertEquals(WorkerStatus::OFFLINE, $worker->getStatus(), 'Worker is offline');
             $this->assertSame(0, $worker->getHandled(), 'No message has been handled');
             $this->assertSame(0, $worker->getFailed(), 'No message has been failed');
-            $this->assertCount(0, $worker->getMemoryUsage(), 'Memory usage has not been collected');
+            $this->assertEmpty( $worker->getMemoryUsage(), 'Memory usage has not been collected');
+            $this->assertEmpty($this->messengerMessageRepository->findAll(), 'No message has been dispatched');
+            $this->assertNull($worker->getMessage(), 'No message has been set to worker');
 
             $started = $this->workerManager->start($worker);
 
@@ -52,10 +55,12 @@ class WorkerTest extends AbstractBaseTest
                 return $worker->getStatus() === WorkerStatus::PROCESSING;
             });
 
+            $this->assertNotNull($worker->getMessage(), 'Message has been set to worker');
+            $this->assertNotEmpty($this->messengerMessageRepository->findAll(), 'Message has been dispatched');
             $this->assertEquals(WorkerStatus::PROCESSING, $worker->getStatus(), 'Worker is processing');
             $this->assertSame(0, $worker->getHandled(), 'No message has been handled');
             $this->assertSame(0, $worker->getFailed(), 'No message has been failed');
-            $this->assertTrue(count($worker->getMemoryUsage()) > 0, 'Memory usage has been collected');
+            $this->assertNotEmpty($worker->getMemoryUsage(), 'Memory usage has been collected');
 
             $this->waitUntil(function () use ($worker) {
                 $this->entityManager->refresh($worker);
@@ -68,17 +73,20 @@ class WorkerTest extends AbstractBaseTest
             // refresh again, as the worker changed the status to offline
             $this->entityManager->refresh($worker);
 
+            $this->assertNull($worker->getMessage(), 'Message has been removed from worker');
+            $this->assertNotEmpty($this->messengerMessageRepository->findAll(), 'Message has been kept as history entry');
             $this->assertEquals(WorkerStatus::OFFLINE, $worker->getStatus(), 'Worker is offline');
             $this->assertSame(1, $worker->getHandled(), 'All messages has been handled');
             $this->assertSame(0, $worker->getFailed(), 'No message has been failed');
             $this->assertNotEmpty($worker->getMemoryUsage(), 'Memory usage has been collected');
+            $this->assertSame(1, $worker->getMessages()->count(), 'Messages has been set to worker');
         } finally {
             // ensures that the worker is stopped, even if the test fails
             $this->workerManager->stop($worker);
         }
     }
 
-    private function waitUntil(Closure $closure, int $timeout = 10): void
+    private function waitUntil(Closure $closure, int $timeout = 20): void
     {
         $iteration = 0;
 
@@ -112,6 +120,7 @@ class WorkerTest extends AbstractBaseTest
         $schemaTool = new SchemaTool($this->entityManager);
         $schemaTool->updateSchema([
             $this->entityManager->getClassMetadata(Worker::class),
+            $this->entityManager->getClassMetadata(MessengerMessage::class),
         ]);
     }
 

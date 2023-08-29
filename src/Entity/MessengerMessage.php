@@ -6,6 +6,7 @@ use DateTimeInterface;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use JsonException;
+use SoureCode\Bundle\Worker\Manager\WorkerManager;
 use Symfony\Component\Messenger\Envelope;
 use Symfony\Component\Messenger\Transport\Serialization\SerializerInterface;
 
@@ -40,6 +41,9 @@ class MessengerMessage
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
     private ?DateTimeInterface $deliveredAt = null;
 
+    #[ORM\ManyToOne(targetEntity: Worker::class, fetch: 'EXTRA_LAZY', inversedBy: 'messages')]
+    private ?Worker $worker = null;
+
     public function getId(): ?int
     {
         return $this->id;
@@ -56,15 +60,21 @@ class MessengerMessage
         return $this;
     }
 
-    /**
-     * @throws JsonException
-     */
-    public function getEnvelope(SerializerInterface $serializer): Envelope
+    public function getEncodedEnvelope(): array
     {
-        return $serializer->decode([
+        return [
             'body' => $this->body,
             'headers' => $this->getDecodedHeaders(),
-        ]);
+        ];
+    }
+
+    public function getDecodedEnvelope(SerializerInterface|WorkerManager $serializer): Envelope
+    {
+        if ($serializer instanceof WorkerManager) {
+            return $serializer->decodeMessage($this->getEncodedEnvelope());
+        }
+
+        return $serializer->decode($this->getEncodedEnvelope());
     }
 
     /**
@@ -127,6 +137,18 @@ class MessengerMessage
     public function setDeliveredAt(?DateTimeInterface $deliveredAt): MessengerMessage
     {
         $this->deliveredAt = $deliveredAt;
+        return $this;
+    }
+
+    public function getWorker(): ?Worker
+    {
+        return $this->worker;
+    }
+
+    public function setWorker(?Worker $worker): MessengerMessage
+    {
+        $this->worker = $worker;
+
         return $this;
     }
 

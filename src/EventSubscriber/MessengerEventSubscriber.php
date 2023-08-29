@@ -123,6 +123,7 @@ class MessengerEventSubscriber implements EventSubscriberInterface
         $worker = $this->getWorker();
 
         if (null !== $worker) {
+            $worker->setMessage($this->serializer->encode($envelope));
             $worker->onWorkerMessageReceived($this->clock);
 
             $this->entityManager->flush();
@@ -145,6 +146,8 @@ class MessengerEventSubscriber implements EventSubscriberInterface
 
         $doctrineReceivedStamp = $this->findDoctrineReceivedStamp($envelope);
 
+        $message = null;
+
         if (null !== $doctrineReceivedStamp) {
             $originalMessage = $this->messengerMessageRepository->find($doctrineReceivedStamp->getId());
 
@@ -163,7 +166,6 @@ class MessengerEventSubscriber implements EventSubscriberInterface
             $message->setQueueName('history');
 
             $this->entityManager->persist($message);
-            $this->entityManager->flush();
         }
 
         $worker = $this->getWorker();
@@ -171,8 +173,12 @@ class MessengerEventSubscriber implements EventSubscriberInterface
         if (null !== $worker) {
             $worker->onWorkerMessageHandled($this->clock);
 
-            $this->entityManager->flush();
+            if (null !== $message) {
+                $worker->addMessage($message);
+            }
         }
+
+        $this->entityManager->flush();
     }
 
     private function findDoctrineReceivedStamp(Envelope $envelope): ?DoctrineReceivedStamp
@@ -236,7 +242,7 @@ class MessengerEventSubscriber implements EventSubscriberInterface
     {
         $event->setEnvelope(
             $event->getEnvelope()
-                ->with(new TrackingStamp())
+                ->with(new TrackingStamp(Worker::$currentId, $this->clock->now()))
         );
     }
 }

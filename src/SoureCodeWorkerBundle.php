@@ -73,6 +73,7 @@ class SoureCodeWorkerBundle extends AbstractBundle
                 abstract_arg('bus_ids'),
                 service(MessageBusInterface::class),
                 service(ClockInterface::class),
+                service(SerializerInterface::class),
             ]);
 
         $services

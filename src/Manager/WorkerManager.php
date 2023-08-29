@@ -3,7 +3,6 @@
 namespace SoureCode\Bundle\Worker\Manager;
 
 use Doctrine\ORM\EntityManagerInterface;
-use Exception;
 use InvalidArgumentException;
 use Psr\Clock\ClockInterface;
 use Psr\Log\LoggerInterface;
@@ -13,8 +12,10 @@ use SoureCode\Bundle\Worker\Message\StartWorkerMessage;
 use SoureCode\Bundle\Worker\Message\StopWorkerMessage;
 use SoureCode\Bundle\Worker\Repository\WorkerRepository;
 use Symfony\Component\Filesystem\Path;
+use Symfony\Component\Messenger\Envelope;
 use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Messenger\Stamp\DispatchAfterCurrentBusStamp;
+use Symfony\Component\Messenger\Transport\Serialization\SerializerInterface;
 use Symfony\Component\Process\PhpExecutableFinder;
 use Symfony\Contracts\Service\ServiceProviderInterface;
 
@@ -32,6 +33,7 @@ class WorkerManager
     private MessageBusInterface $messageBus;
     private DaemonManager $daemonManager;
     private ClockInterface $clock;
+    private SerializerInterface $serializer;
 
     public function __construct(
         DaemonManager            $daemonManager,
@@ -44,7 +46,8 @@ class WorkerManager
         array                    $receiverNames,
         array                    $busIds,
         MessageBusInterface      $messageBus,
-        ClockInterface           $clock
+        ClockInterface           $clock,
+        SerializerInterface      $serializer,
     )
     {
         $this->entityManager = $entityManager;
@@ -58,6 +61,7 @@ class WorkerManager
         $this->messageBus = $messageBus;
         $this->daemonManager = $daemonManager;
         $this->clock = $clock;
+        $this->serializer = $serializer;
     }
 
     /**
@@ -325,5 +329,15 @@ class WorkerManager
         } else {
             $worker->setLastHeartbeat($this->clock->now());
         }
+    }
+
+    public function decodeMessage(array $data): Envelope
+    {
+        return $this->serializer->decode($data);
+    }
+
+    public function encodeMessage(Envelope $data): array
+    {
+        return $this->serializer->encode($data);
     }
 }

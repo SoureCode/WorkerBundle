@@ -3,6 +3,8 @@
 namespace SoureCode\Bundle\Worker\Entity;
 
 use DateTimeImmutable;
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Psr\Clock\ClockInterface;
@@ -62,6 +64,20 @@ class Worker
 
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
     private ?DateTimeImmutable $lastHeartbeat = null;
+
+    /**
+     * @return Collection<array-key, MessengerMessage>
+     */
+    #[ORM\OneToMany(mappedBy: 'worker', targetEntity: MessengerMessage::class, fetch: 'EXTRA_LAZY')]
+    private Collection $messages;
+
+    #[ORM\Column(type: Types::JSON, nullable: true)]
+    private ?array $message = null;
+
+    public function __construct()
+    {
+        $this->messages = new ArrayCollection();
+    }
 
     public function setReset(bool $reset): static
     {
@@ -301,6 +317,7 @@ class Worker
 
     private function online(DateTimeImmutable $now): void
     {
+        $this->setMessage(null);
         $this->setStatus(WorkerStatus::IDLE);
         $this->setShouldExit(false);
         $this->setStartedAt($now);
@@ -339,6 +356,7 @@ class Worker
 
     public function offline(): void
     {
+        $this->setMessage(null);
         $this->setStatus(WorkerStatus::OFFLINE);
         $this->setStartedAt(null);
         $this->setShouldExit(false);
@@ -347,6 +365,7 @@ class Worker
 
     public function onWorkerMessageFailed(ClockInterface $clock): void
     {
+        $this->setMessage(null);
         $this->setLastHeartbeat($clock->now());
         $this->incrementFailed();
         $this->addMemoryUsage($clock);
@@ -361,6 +380,7 @@ class Worker
 
     public function onWorkerMessageHandled(ClockInterface $clock): void
     {
+        $this->setMessage(null);
         $this->setLastHeartbeat($clock->now());
         $this->incrementHandled();
         $this->addMemoryUsage($clock);
@@ -384,5 +404,47 @@ class Worker
     {
         $this->setLastHeartbeat($clock->now());
         $this->addMemoryUsage($clock);
+    }
+
+    /**
+     * @return Collection<array-key, MessengerMessage>
+     */
+    public function getMessages(): Collection
+    {
+        return $this->messages;
+    }
+
+    public function addMessage(MessengerMessage $message): self
+    {
+        if (!$this->messages->contains($message)) {
+            $this->messages[] = $message;
+            $message->setWorker($this);
+        }
+
+        return $this;
+    }
+
+    public function removeMessage(MessengerMessage $message): self
+    {
+        if ($this->messages->removeElement($message)) {
+            // set the owning side to null (unless already changed)
+            if ($message->getWorker() === $this) {
+                $message->setWorker(null);
+            }
+        }
+
+        return $this;
+    }
+
+    public function setMessage(?array $message): self
+    {
+        $this->message = $message;
+
+        return $this;
+    }
+
+    public function getMessage(): ?array
+    {
+        return $this->message;
     }
 }

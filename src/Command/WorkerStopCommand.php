@@ -44,6 +44,10 @@ class WorkerStopCommand extends Command
         $timeout = $input->getOption('timeout') ?? 10;
         $signals = $input->getOption('signal') ?? null;
 
+        if (empty($signals)) {
+            $signals = null;
+        }
+
         if ($id !== null && $all) {
             throw new RuntimeException('You cannot specify both --id and --all');
         }

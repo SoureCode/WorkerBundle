@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "1a283b60f520e5fc5629682f6acd2301",
+    "content-hash": "dce3ace1ac5aa4d93a74cff28691b2bf",
     "packages": [
         {
             "name": "doctrine/cache",
@@ -1385,16 +1385,16 @@
         },
         {
             "name": "sourecode/daemon-bundle",
-            "version": "v0.7.2",
+            "version": "v0.7.3",
             "source": {
                 "type": "git",
                 "url": "https://github.com/SoureCode/DaemonBundle.git",
-                "reference": "d7035211f14880e470581effe556e05c58db3640"
+                "reference": "e83b097da193b81756c0d21f1698add2ceae63ec"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/SoureCode/DaemonBundle/zipball/d7035211f14880e470581effe556e05c58db3640",
-                "reference": "d7035211f14880e470581effe556e05c58db3640",
+                "url": "https://api.github.com/repos/SoureCode/DaemonBundle/zipball/e83b097da193b81756c0d21f1698add2ceae63ec",
+                "reference": "e83b097da193b81756c0d21f1698add2ceae63ec",
                 "shasum": ""
             },
             "require": {
@@ -1437,9 +1437,9 @@
             ],
             "support": {
                 "issues": "https://github.com/SoureCode/DaemonBundle/issues",
-                "source": "https://github.com/SoureCode/DaemonBundle/tree/v0.7.2"
+                "source": "https://github.com/SoureCode/DaemonBundle/tree/v0.7.3"
             },
-            "time": "2023-08-29T18:27:55+00:00"
+            "time": "2023-08-29T18:35:13+00:00"
         },
         {
             "name": "symfony/cache",

@@ -164,7 +164,7 @@ class WorkerManager
             return true;
         }
 
-        return $this->stop($workerOrId);
+        return $this->stop($workerOrId, $timeout, $signals);
     }
 
     public function stop(Worker|int $workerOrId, int $timeout = 10, ?array $signals = null): bool

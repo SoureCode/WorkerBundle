@@ -51,7 +51,13 @@ class WorkerStartCommand extends Command
         }
 
         if ($all) {
-            return $this->workerManager->startAll();
+            $started = $this->workerManager->startAll();
+
+            if ($started) {
+                return Command::SUCCESS;
+            }
+
+            return Command::FAILURE;
         }
 
         if ($id === null) {
@@ -64,16 +70,16 @@ class WorkerStartCommand extends Command
         }
 
         if ($async) {
-            $result = $this->workerManager->startAsync($id);
+            $started = $this->workerManager->startAsync($id);
+        } else {
+            $started = $this->workerManager->start($id);
+        }
 
-            if ($result !== true) {
-                return $result;
-            }
-
+        if ($started) {
             return Command::SUCCESS;
         }
 
-        return $this->workerManager->start($id);
+        return Command::FAILURE;
     }
 
 

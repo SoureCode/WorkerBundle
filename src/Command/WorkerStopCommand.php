@@ -65,7 +65,13 @@ class WorkerStopCommand extends Command
         }
 
         if ($all) {
-            return $this->workerManager->stopAll($byFiles ?? false, $timeout, $signals);
+            $stopped = $this->workerManager->stopAll($byFiles ?? false, $timeout, $signals);
+
+            if ($stopped) {
+                return Command::SUCCESS;
+            }
+
+            return Command::FAILURE;
         }
 
         if ($id === null) {
@@ -78,15 +84,15 @@ class WorkerStopCommand extends Command
         }
 
         if ($async) {
-            $result = $this->workerManager->stopAsync($id, $timeout, $signals);
+            $stopped = $this->workerManager->stopAsync($id, $timeout, $signals);
+        } else {
+            $stopped = $this->workerManager->stop($id, $timeout, $signals);
+        }
 
-            if ($result !== true) {
-                return $result;
-            }
-
+        if ($stopped) {
             return Command::SUCCESS;
         }
 
-        return $this->workerManager->stop($id, $timeout, $signals);
+        return Command::FAILURE;
     }
 }

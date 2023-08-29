@@ -28,8 +28,8 @@ class WorkerStopCommand extends Command
     protected function configure(): void
     {
         $this->addOption('id', 'i', InputOption::VALUE_OPTIONAL, 'Worker ID')
-            ->addOption('timeout', 't', InputOption::VALUE_OPTIONAL, 'Timeout in seconds', 10)
-            ->addOption('signal', 's', InputOption::VALUE_OPTIONAL | InputOption::VALUE_IS_ARRAY, 'Signals to send', null)
+            ->addOption('timeout', 't', InputOption::VALUE_OPTIONAL, 'Timeout in seconds')
+            ->addOption('signal', 's', InputOption::VALUE_OPTIONAL | InputOption::VALUE_IS_ARRAY, 'Signals to send')
             ->addOption('all', 'a', InputOption::VALUE_NONE, 'Stop all workers')
             ->addOption('by-files', null, InputOption::VALUE_NONE, 'Stop workers by their pid files')
             ->addOption('async', null, InputOption::VALUE_NONE, 'Stop worker async');
@@ -37,12 +37,12 @@ class WorkerStopCommand extends Command
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        $id = $input->getOption('id');
+        $id = $input->getOption('id') ?? null;
         $all = $input->getOption('all');
         $async = $input->getOption('async');
         $byFiles = $input->getOption('by-files');
-        $timeout = $input->getOption('timeout');
-        $signals = $input->getOption('signal');
+        $timeout = $input->getOption('timeout') ?? 10;
+        $signals = $input->getOption('signal') ?? null;
 
         if ($id !== null && $all) {
             throw new RuntimeException('You cannot specify both --id and --all');

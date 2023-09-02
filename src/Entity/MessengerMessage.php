@@ -10,7 +10,7 @@ use SoureCode\Bundle\Worker\Manager\WorkerManager;
 use Symfony\Component\Messenger\Envelope;
 use Symfony\Component\Messenger\Transport\Serialization\SerializerInterface;
 
-#[ORM\Entity()]
+#[ORM\Entity]
 #[ORM\Table(name: 'messenger_messages')] // @todo does not work if changed in config
 #[ORM\Index(columns: ['queue_name'])]
 #[ORM\Index(columns: ['available_at'])]
@@ -41,9 +41,6 @@ class MessengerMessage
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
     private ?DateTimeInterface $deliveredAt = null;
 
-    #[ORM\ManyToOne(targetEntity: Worker::class, fetch: 'EXTRA_LAZY', inversedBy: 'messages')]
-    private ?Worker $worker = null;
-
     public function getId(): ?int
     {
         return $this->id;
@@ -60,14 +57,6 @@ class MessengerMessage
         return $this;
     }
 
-    public function getEncodedEnvelope(): array
-    {
-        return [
-            'body' => $this->body,
-            'headers' => $this->getDecodedHeaders(),
-        ];
-    }
-
     public function getDecodedEnvelope(SerializerInterface|WorkerManager $serializer): Envelope
     {
         if ($serializer instanceof WorkerManager) {
@@ -75,6 +64,14 @@ class MessengerMessage
         }
 
         return $serializer->decode($this->getEncodedEnvelope());
+    }
+
+    public function getEncodedEnvelope(): array
+    {
+        return [
+            'body' => $this->body,
+            'headers' => $this->getDecodedHeaders(),
+        ];
     }
 
     /**
@@ -139,17 +136,4 @@ class MessengerMessage
         $this->deliveredAt = $deliveredAt;
         return $this;
     }
-
-    public function getWorker(): ?Worker
-    {
-        return $this->worker;
-    }
-
-    public function setWorker(?Worker $worker): MessengerMessage
-    {
-        $this->worker = $worker;
-
-        return $this;
-    }
-
 }

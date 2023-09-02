@@ -13,6 +13,7 @@ use SoureCode\Bundle\Worker\Manager\WorkerManager;
 use SoureCode\Bundle\Worker\Messenger\TrackingStamp;
 use SoureCode\Bundle\Worker\Repository\MessengerMessageRepository;
 use SoureCode\Bundle\Worker\Repository\WorkerRepository;
+use Symfony\Component\DependencyInjection\Attribute\Autoconfigure;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\Messenger\Bridge\Doctrine\Transport\DoctrineReceivedStamp;
 use Symfony\Component\Messenger\Envelope;
@@ -27,6 +28,7 @@ use Symfony\Component\Messenger\Exception\LogicException;
 use Symfony\Component\Messenger\Transport\Serialization\SerializerInterface;
 use function class_exists;
 
+#[Autoconfigure(tags: ['monolog.logger' => ['channel' => 'worker']])]
 class MessengerEventSubscriber implements EventSubscriberInterface
 {
     private ClockInterface $clock;
@@ -87,7 +89,7 @@ class MessengerEventSubscriber implements EventSubscriberInterface
                 $worker->setStatus($event->isWorkerIdle() ? WorkerStatus::IDLE : WorkerStatus::PROCESSING);
             }
 
-            $worker->onWorkerRunning($this->clock);
+            $worker->onWorkerRunning($this->clock->now());
 
             $this->entityManager->flush();
         }
@@ -123,8 +125,7 @@ class MessengerEventSubscriber implements EventSubscriberInterface
         $worker = $this->getWorker();
 
         if (null !== $worker) {
-            $worker->setMessage($this->serializer->encode($envelope));
-            $worker->onWorkerMessageReceived($this->clock);
+            $worker->onWorkerMessageReceived($this->clock->now());
 
             $this->entityManager->flush();
         }
@@ -145,8 +146,6 @@ class MessengerEventSubscriber implements EventSubscriberInterface
         $envelope = $event->getEnvelope();
 
         $doctrineReceivedStamp = $this->findDoctrineReceivedStamp($envelope);
-
-        $message = null;
 
         if (null !== $doctrineReceivedStamp) {
             $originalMessage = $this->messengerMessageRepository->find($doctrineReceivedStamp->getId());
@@ -169,14 +168,7 @@ class MessengerEventSubscriber implements EventSubscriberInterface
         }
 
         $worker = $this->getWorker();
-
-        if (null !== $worker) {
-            $worker->onWorkerMessageHandled($this->clock);
-
-            if (null !== $message) {
-                $worker->addMessage($message);
-            }
-        }
+        $worker?->onWorkerMessageHandled($this->clock->now());
 
         $this->entityManager->flush();
     }
@@ -186,11 +178,7 @@ class MessengerEventSubscriber implements EventSubscriberInterface
         /** @var DoctrineReceivedStamp|null $doctrineReceivedStamp */
         $doctrineReceivedStamp = $envelope->last(DoctrineReceivedStamp::class);
 
-        if (null === $doctrineReceivedStamp) {
-            return null;
-        }
-
-        return $doctrineReceivedStamp;
+        return $doctrineReceivedStamp ?? null;
     }
 
     public function onWorkerMessageFailed(WorkerMessageFailedEvent $event): void
@@ -208,7 +196,7 @@ class MessengerEventSubscriber implements EventSubscriberInterface
         $worker = $this->getWorker();
 
         if (null !== $worker) {
-            $worker->onWorkerMessageFailed($this->clock);
+            $worker->onWorkerMessageFailed($this->clock->now());
 
             $this->entityManager->flush();
         }
@@ -219,7 +207,7 @@ class MessengerEventSubscriber implements EventSubscriberInterface
         $worker = $this->getWorker();
 
         if (null !== $worker) {
-            $worker->onWorkerStopped($this->clock);
+            $worker->onWorkerStopped($this->clock->now());
 
             $this->entityManager->flush();
         }
@@ -232,7 +220,7 @@ class MessengerEventSubscriber implements EventSubscriberInterface
         if (null !== $worker) {
             // @todo test if flush and the middleware named "doctrine_transaction" works
             //       otherwise, write manually to database over the entity manager?
-            $worker->onWorkerStarted($this->clock);
+            $worker->onWorkerStarted($this->clock->now());
 
             $this->entityManager->flush();
         }

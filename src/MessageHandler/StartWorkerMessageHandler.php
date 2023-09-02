@@ -16,7 +16,7 @@ class StartWorkerMessageHandler
         $this->workerManager = $workerManager;
     }
 
-    public function __invoke(StartWorkerMessage $message)
+    public function __invoke(StartWorkerMessage $message): void
     {
         $this->workerManager->start($message->getId());
     }

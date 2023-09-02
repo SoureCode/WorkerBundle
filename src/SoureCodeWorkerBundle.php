@@ -4,7 +4,6 @@ namespace SoureCode\Bundle\Worker;
 
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Clock\ClockInterface;
-use Psr\Log\LoggerInterface;
 use SoureCode\Bundle\Daemon\Manager\DaemonManager;
 use SoureCode\Bundle\Worker\Command\WorkerCommand;
 use SoureCode\Bundle\Worker\Command\WorkerStartCommand;
@@ -64,7 +63,7 @@ class SoureCodeWorkerBundle extends AbstractBundle
             ->args([
                 service(DaemonManager::class),
                 service(EntityManagerInterface::class),
-                service(LoggerInterface::class),
+                service('logger'),
                 service('soure_code.worker.repository.worker'),
                 param('kernel.project_dir'),
                 abstract_arg('global_failure_transport'),
@@ -74,6 +73,9 @@ class SoureCodeWorkerBundle extends AbstractBundle
                 service(MessageBusInterface::class),
                 service(ClockInterface::class),
                 service(SerializerInterface::class),
+            ])
+            ->tag('monolog.logger', [
+                'channel' => 'worker',
             ]);
 
         $services
@@ -83,12 +85,15 @@ class SoureCodeWorkerBundle extends AbstractBundle
         $services->set('soure_code.worker.event_subscriber.messenger', MessengerEventSubscriber::class)
             ->args([
                 service(ClockInterface::class),
-                service(LoggerInterface::class),
+                service('logger'),
                 service(EntityManagerInterface::class),
                 service('soure_code.worker.repository.worker'),
                 service('soure_code.worker.repository.messenger_message'),
                 service(SerializerInterface::class),
                 service(DaemonManager::class),
+            ])
+            ->tag('monolog.logger', [
+                'channel' => 'worker',
             ])
             ->tag('kernel.event_subscriber');
 

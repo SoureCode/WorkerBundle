@@ -3,14 +3,11 @@
 namespace SoureCode\Bundle\Worker\Entity;
 
 use DateTimeImmutable;
-use Doctrine\Common\Collections\ArrayCollection;
-use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
-use Psr\Clock\ClockInterface;
 use SoureCode\Bundle\Worker\Command\WorkerCommand;
 
-#[ORM\Entity()]
+#[ORM\Entity]
 class Worker
 {
     public static ?int $currentId = null;
@@ -20,7 +17,7 @@ class Worker
     #[ORM\Column]
     private ?int $id = null;
 
-    #[ORM\Column()]
+    #[ORM\Column]
     private array $transports = [];
 
     #[ORM\Column]
@@ -65,20 +62,6 @@ class Worker
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
     private ?DateTimeImmutable $lastHeartbeat = null;
 
-    /**
-     * @return Collection<array-key, MessengerMessage>
-     */
-    #[ORM\OneToMany(mappedBy: 'worker', targetEntity: MessengerMessage::class, fetch: 'EXTRA_LAZY')]
-    private Collection $messages;
-
-    #[ORM\Column(type: Types::JSON, nullable: true)]
-    private ?array $message = null;
-
-    public function __construct()
-    {
-        $this->messages = new ArrayCollection();
-    }
-
     public function setReset(bool $reset): static
     {
         $this->reset = $reset;
@@ -91,7 +74,7 @@ class Worker
         return $this->status !== WorkerStatus::OFFLINE;
     }
 
-    public function getCommand()
+    public function getCommand(): array
     {
         $command = [
             WorkerCommand::getDefaultName(),
@@ -307,28 +290,24 @@ class Worker
         $this->lastHeartbeat = $lastHeartbeat;
     }
 
-    public function onWorkerStarted(ClockInterface $clock): void
+    public function onWorkerStarted(DateTimeImmutable $timestamp): void
     {
-        $now = $clock->now();
-
-        $this->online($now);
-        $this->addMemoryUsage($clock);
+        $this->online($timestamp);
+        $this->addMemoryUsage($timestamp);
     }
 
-    private function online(DateTimeImmutable $now): void
+    private function online(DateTimeImmutable $timestamp): void
     {
-        $this->setMessage(null);
         $this->setStatus(WorkerStatus::IDLE);
         $this->setShouldExit(false);
-        $this->setStartedAt($now);
-        $this->setLastHeartbeat($now);
+        $this->setStartedAt($timestamp);
+        $this->setLastHeartbeat($timestamp);
     }
 
-    public function addMemoryUsage(ClockInterface $clock): void
+    public function addMemoryUsage(DateTimeImmutable $timestamp): void
     {
         $memoryUsage = memory_get_usage(true);
-        $now = $clock->now();
-        $key = $now->format('Y-m-d\TH:i:s');
+        $key = $timestamp->format('Y-m-d\TH:i:s');
 
         if (array_key_exists($key, $this->memoryUsage)) {
             $this->memoryUsage[$key] = max(
@@ -340,35 +319,33 @@ class Worker
         }
 
         // remove older than 1 hour
-        $this->memoryUsage = array_filter($this->memoryUsage, static function ($key) use ($now) {
+        $this->memoryUsage = array_filter($this->memoryUsage, static function ($key) use ($timestamp) {
             $date = new DateTimeImmutable($key);
-            $diff = $now->getTimestamp() - $date->getTimestamp();
+            $diff = $timestamp->getTimestamp() - $date->getTimestamp();
 
             return $diff < 3600;
         }, ARRAY_FILTER_USE_KEY);
     }
 
-    public function onWorkerStopped(ClockInterface $clock): void
+    public function onWorkerStopped(DateTimeImmutable $timestamp): void
     {
         $this->offline();
-        $this->addMemoryUsage($clock);
+        $this->addMemoryUsage($timestamp);
     }
 
     public function offline(): void
     {
-        $this->setMessage(null);
         $this->setStatus(WorkerStatus::OFFLINE);
         $this->setStartedAt(null);
         $this->setShouldExit(false);
         $this->setLastHeartbeat(null);
     }
 
-    public function onWorkerMessageFailed(ClockInterface $clock): void
+    public function onWorkerMessageFailed(DateTimeImmutable $timestamp): void
     {
-        $this->setMessage(null);
-        $this->setLastHeartbeat($clock->now());
+        $this->setLastHeartbeat($timestamp);
         $this->incrementFailed();
-        $this->addMemoryUsage($clock);
+        $this->addMemoryUsage($timestamp);
     }
 
     public function incrementFailed(): int
@@ -378,12 +355,11 @@ class Worker
         return $this->failed;
     }
 
-    public function onWorkerMessageHandled(ClockInterface $clock): void
+    public function onWorkerMessageHandled(DateTimeImmutable $timestamp): void
     {
-        $this->setMessage(null);
-        $this->setLastHeartbeat($clock->now());
+        $this->setLastHeartbeat($timestamp);
         $this->incrementHandled();
-        $this->addMemoryUsage($clock);
+        $this->addMemoryUsage($timestamp);
     }
 
     public function incrementHandled(): int
@@ -393,58 +369,16 @@ class Worker
         return $this->handled;
     }
 
-    public function onWorkerMessageReceived(ClockInterface $clock): void
+    public function onWorkerMessageReceived(DateTimeImmutable $timestamp): void
     {
-        $this->setLastHeartbeat($clock->now());
+        $this->setLastHeartbeat($timestamp);
         $this->setStatus(WorkerStatus::PROCESSING);
-        $this->addMemoryUsage($clock);
+        $this->addMemoryUsage($timestamp);
     }
 
-    public function onWorkerRunning(ClockInterface $clock): void
+    public function onWorkerRunning(DateTimeImmutable $timestamp): void
     {
-        $this->setLastHeartbeat($clock->now());
-        $this->addMemoryUsage($clock);
-    }
-
-    /**
-     * @return Collection<array-key, MessengerMessage>
-     */
-    public function getMessages(): Collection
-    {
-        return $this->messages;
-    }
-
-    public function addMessage(MessengerMessage $message): self
-    {
-        if (!$this->messages->contains($message)) {
-            $this->messages[] = $message;
-            $message->setWorker($this);
-        }
-
-        return $this;
-    }
-
-    public function removeMessage(MessengerMessage $message): self
-    {
-        if ($this->messages->removeElement($message)) {
-            // set the owning side to null (unless already changed)
-            if ($message->getWorker() === $this) {
-                $message->setWorker(null);
-            }
-        }
-
-        return $this;
-    }
-
-    public function setMessage(?array $message): self
-    {
-        $this->message = $message;
-
-        return $this;
-    }
-
-    public function getMessage(): ?array
-    {
-        return $this->message;
+        $this->setLastHeartbeat($timestamp);
+        $this->addMemoryUsage($timestamp);
     }
 }

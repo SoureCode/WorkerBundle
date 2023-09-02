@@ -5,10 +5,10 @@ namespace SoureCode\Bundle\Worker\Message;
 class StopWorkerMessage
 {
     private int $id;
-    private int $timeout;
+    private ?int $timeout;
     private ?array $signals = null;
 
-    public function __construct(int $id, int $timeout = 10, ?array $signals = null)
+    public function __construct(int $id, ?int $timeout = null, ?array $signals = null)
     {
         $this->id = $id;
         $this->timeout = $timeout;

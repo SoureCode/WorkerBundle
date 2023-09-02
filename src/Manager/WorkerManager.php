@@ -11,6 +11,7 @@ use SoureCode\Bundle\Worker\Entity\Worker;
 use SoureCode\Bundle\Worker\Message\StartWorkerMessage;
 use SoureCode\Bundle\Worker\Message\StopWorkerMessage;
 use SoureCode\Bundle\Worker\Repository\WorkerRepository;
+use Symfony\Component\DependencyInjection\Attribute\Autoconfigure;
 use Symfony\Component\Filesystem\Path;
 use Symfony\Component\Messenger\Envelope;
 use Symfony\Component\Messenger\MessageBusInterface;
@@ -19,6 +20,7 @@ use Symfony\Component\Messenger\Transport\Serialization\SerializerInterface;
 use Symfony\Component\Process\PhpExecutableFinder;
 use Symfony\Contracts\Service\ServiceProviderInterface;
 
+#[Autoconfigure(tags: ['monolog.logger' => ['channel' => 'worker']])]
 class WorkerManager
 {
     public static string $daemonPrefix = 'soure_code_worker_';
@@ -149,7 +151,7 @@ class WorkerManager
     /**
      * @return bool true if stop message was dispatched or worker was stopped, depends on the current state
      */
-    public function stopAsync(Worker|int $workerOrId, int $timeout = 10, ?array $signals = null): bool
+    public function stopAsync(Worker|int $workerOrId, ?int $timeout = null, ?array $signals = null): bool
     {
         if ($this->workerRepository->hasRunningWorkers()) {
             $id = $workerOrId;
@@ -171,7 +173,7 @@ class WorkerManager
         return $this->stop($workerOrId, $timeout, $signals);
     }
 
-    public function stop(Worker|int $workerOrId, int $timeout = 10, ?array $signals = null): bool
+    public function stop(Worker|int $workerOrId, ?int $timeout = null, ?array $signals = null): bool
     {
         if (!$this->stopGracefully($workerOrId)) {
             return false;
@@ -216,7 +218,7 @@ class WorkerManager
      * @param bool $byPidFiles If true, the pid files will be used to stop the workers, not the database.
      * @return bool true if all workers were stopped successfully
      */
-    public function stopAll(bool $byPidFiles = false, int $timeout = 10, ?array $signals = null): bool
+    public function stopAll(bool $byPidFiles = false, ?int $timeout = null, ?array $signals = null): bool
     {
         if ($byPidFiles) {
             return $this->daemonManager->stopAll('/^soure_code_worker_\d+$/', $timeout, $signals);

@@ -10,6 +10,7 @@ use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Component\DependencyInjection\Attribute\Autoconfigure;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Messenger\Command\ConsumeMessagesCommand as BaseConsumeMessagesCommand;
 use Symfony\Component\Messenger\EventListener\ResetServicesListener;
@@ -19,6 +20,7 @@ use Symfony\Component\Messenger\RoutableMessageBus;
     name: 'worker',
     description: 'Wrapper for Messenger ConsumeMessagesCommand to be able to associate the worker'
 )]
+#[Autoconfigure(tags: ['monolog.logger' => ['channel' => 'worker']])]
 class WorkerCommand extends BaseConsumeMessagesCommand
 {
     public function __construct(

@@ -37,12 +37,12 @@ class WorkerStopCommand extends Command
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        $id = $input->getOption('id') ?? null;
+        $id = $input->getOption('id');
         $all = $input->getOption('all');
         $async = $input->getOption('async');
         $byFiles = $input->getOption('by-files');
-        $timeout = $input->getOption('timeout') ?? 10;
-        $signals = $input->getOption('signal') ?? null;
+        $timeout = $input->getOption('timeout');
+        $signals = $input->getOption('signal');
 
         if (empty($signals)) {
             $signals = null;

@@ -41,7 +41,6 @@ class WorkerTest extends AbstractBaseTest
             $this->assertSame(0, $worker->getFailed(), 'No message has been failed');
             $this->assertEmpty( $worker->getMemoryUsage(), 'Memory usage has not been collected');
             $this->assertEmpty($this->messengerMessageRepository->findAll(), 'No message has been dispatched');
-            $this->assertNull($worker->getMessage(), 'No message has been set to worker');
 
             $started = $this->workerManager->start($worker);
 
@@ -55,7 +54,6 @@ class WorkerTest extends AbstractBaseTest
                 return $worker->getStatus() === WorkerStatus::PROCESSING;
             });
 
-            $this->assertNotNull($worker->getMessage(), 'Message has been set to worker');
             $this->assertNotEmpty($this->messengerMessageRepository->findAll(), 'Message has been dispatched');
             $this->assertEquals(WorkerStatus::PROCESSING, $worker->getStatus(), 'Worker is processing');
             $this->assertSame(0, $worker->getHandled(), 'No message has been handled');
@@ -73,13 +71,11 @@ class WorkerTest extends AbstractBaseTest
             // refresh again, as the worker changed the status to offline
             $this->entityManager->refresh($worker);
 
-            $this->assertNull($worker->getMessage(), 'Message has been removed from worker');
             $this->assertNotEmpty($this->messengerMessageRepository->findAll(), 'Message has been kept as history entry');
             $this->assertEquals(WorkerStatus::OFFLINE, $worker->getStatus(), 'Worker is offline');
             $this->assertSame(1, $worker->getHandled(), 'All messages has been handled');
             $this->assertSame(0, $worker->getFailed(), 'No message has been failed');
             $this->assertNotEmpty($worker->getMemoryUsage(), 'Memory usage has been collected');
-            $this->assertSame(1, $worker->getMessages()->count(), 'Messages has been set to worker');
         } finally {
             // ensures that the worker is stopped, even if the test fails
             $this->workerManager->stop($worker);

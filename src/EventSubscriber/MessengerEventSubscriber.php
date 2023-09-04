@@ -2,6 +2,7 @@
 
 namespace SoureCode\Bundle\Worker\EventSubscriber;
 
+use Closure;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Clock\ClockInterface;
 use Psr\Log\LoggerInterface;
@@ -31,6 +32,8 @@ use function class_exists;
 #[Autoconfigure(tags: ['monolog.logger' => ['channel' => 'worker']])]
 class MessengerEventSubscriber implements EventSubscriberInterface
 {
+    private static ?Closure $reportFunction = null;
+
     private ClockInterface $clock;
     private LoggerInterface $logger;
     private EntityManagerInterface $entityManager;
@@ -56,6 +59,16 @@ class MessengerEventSubscriber implements EventSubscriberInterface
         $this->messengerMessageRepository = $messengerMessageRepository;
         $this->serializer = $serializer;
         $this->daemonManager = $daemonManager;
+
+        self::$reportFunction = function () {
+        };
+    }
+
+    public static function report(): void
+    {
+        if (null !== self::$reportFunction) {
+            (self::$reportFunction)();
+        }
     }
 
     public static function getSubscribedEvents(): array
@@ -128,6 +141,13 @@ class MessengerEventSubscriber implements EventSubscriberInterface
             $worker->onWorkerMessageReceived($this->clock->now());
 
             $this->entityManager->flush();
+
+            self::$reportFunction = function () use ($worker) {
+                if ($this->entityManager->isOpen() && $this->entityManager->getConnection()->isConnected()) {
+                    $worker->addMemoryUsage($this->clock->now());
+                    $this->entityManager->flush();
+                }
+            };
         }
     }
 
@@ -168,7 +188,12 @@ class MessengerEventSubscriber implements EventSubscriberInterface
         }
 
         $worker = $this->getWorker();
-        $worker?->onWorkerMessageHandled($this->clock->now());
+
+        if (null !== $worker) {
+            $worker->onWorkerMessageHandled($this->clock->now());
+            self::$reportFunction = function () {
+            };
+        }
 
         $this->entityManager->flush();
     }
@@ -197,6 +222,8 @@ class MessengerEventSubscriber implements EventSubscriberInterface
 
         if (null !== $worker) {
             $worker->onWorkerMessageFailed($this->clock->now());
+            self::$reportFunction = function () {
+            };
 
             $this->entityManager->flush();
         }
@@ -208,6 +235,8 @@ class MessengerEventSubscriber implements EventSubscriberInterface
 
         if (null !== $worker) {
             $worker->onWorkerStopped($this->clock->now());
+            self::$reportFunction = function () {
+            };
 
             $this->entityManager->flush();
         }

@@ -74,13 +74,13 @@ class MessengerEventSubscriber implements EventSubscriberInterface
     public static function getSubscribedEvents(): array
     {
         return [
-            WorkerMessageReceivedEvent::class => 'onWorkerMessageReceived',
-            WorkerMessageHandledEvent::class => 'onWorkerMessageHandled',
-            WorkerMessageFailedEvent::class => 'onWorkerMessageFailed',
-            WorkerRunningEvent::class => 'onWorkerRunning',
-            WorkerStoppedEvent::class => 'onWorkerStopped',
-            WorkerStartedEvent::class => 'onWorkerStarted',
-            SendMessageToTransportsEvent::class => 'onSendMessageToTransports',
+            WorkerMessageReceivedEvent::class => ['onWorkerMessageReceived', 50],
+            WorkerMessageHandledEvent::class => ['onWorkerMessageHandled', 50],
+            WorkerMessageFailedEvent::class => ['onWorkerMessageFailed', 50],
+            WorkerRunningEvent::class => ['onWorkerRunning', 50],
+            WorkerStoppedEvent::class => ['onWorkerStopped', 50],
+            WorkerStartedEvent::class => ['onWorkerStarted', 50],
+            SendMessageToTransportsEvent::class => ['onSendMessageToTransports', 50],
         ];
     }
 
@@ -116,7 +116,9 @@ class MessengerEventSubscriber implements EventSubscriberInterface
 
         $worker = $this->workerRepository->find(Worker::$currentId);
 
-        $this->entityManager->refresh($worker);
+        if ($this->entityManager->isOpen()) {
+            $this->entityManager->refresh($worker);
+        }
 
         return $worker;
     }

@@ -28,6 +28,7 @@ framework:
 
     routing:
       SoureCode\Bundle\Worker\Tests\app\src\Message\SleepMessage: async
+      SoureCode\Bundle\Worker\Tests\app\src\Message\StopMessage: async
 
 monolog:
   handlers:

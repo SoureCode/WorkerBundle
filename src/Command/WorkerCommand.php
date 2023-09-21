@@ -23,6 +23,8 @@ use Symfony\Component\Messenger\RoutableMessageBus;
 #[Autoconfigure(tags: ['monolog.logger' => ['channel' => 'worker']])]
 class WorkerCommand extends BaseConsumeMessagesCommand
 {
+    private ?LoggerInterface $loggger;
+
     public function __construct(
         RoutableMessageBus       $routableBus,
         ContainerInterface       $receiverLocator,
@@ -34,6 +36,8 @@ class WorkerCommand extends BaseConsumeMessagesCommand
         ContainerInterface       $rateLimiterLocator = null
     )
     {
+        $this->loggger = $logger;
+
         parent::__construct(
             $routableBus,
             $receiverLocator,
@@ -67,6 +71,10 @@ class WorkerCommand extends BaseConsumeMessagesCommand
         }
 
         Worker::$currentId = (int)$id;
+
+        $this->loggger->info('Worker started', [
+            'id' => $id,
+        ]);
 
         return parent::execute($input, $output);
     }

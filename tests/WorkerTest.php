@@ -13,6 +13,7 @@ use SoureCode\Bundle\Worker\Manager\WorkerManager;
 use SoureCode\Bundle\Worker\Repository\MessengerMessageRepository;
 use SoureCode\Bundle\Worker\Repository\WorkerRepository;
 use SoureCode\Bundle\Worker\Tests\app\src\Message\SleepMessage;
+use SoureCode\Bundle\Worker\Tests\app\src\Message\StopMessage;
 use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Messenger\Transport\Serialization\SerializerInterface;
 
@@ -118,6 +119,16 @@ class WorkerTest extends AbstractBaseTest
             $this->entityManager->getClassMetadata(Worker::class),
             $this->entityManager->getClassMetadata(MessengerMessage::class),
         ]);
+
+        $this->workerRepository->createQueryBuilder('w')
+            ->delete()
+            ->getQuery()
+            ->execute();
+
+        $this->messengerMessageRepository->createQueryBuilder('m')
+            ->delete()
+            ->getQuery()
+            ->execute();
     }
 
     protected function tearDown(): void

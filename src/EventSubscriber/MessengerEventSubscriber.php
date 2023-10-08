@@ -25,7 +25,6 @@ use Symfony\Component\Messenger\Event\WorkerMessageReceivedEvent;
 use Symfony\Component\Messenger\Event\WorkerRunningEvent;
 use Symfony\Component\Messenger\Event\WorkerStartedEvent;
 use Symfony\Component\Messenger\Event\WorkerStoppedEvent;
-use Symfony\Component\Messenger\Exception\LogicException;
 use Symfony\Component\Messenger\Transport\Serialization\SerializerInterface;
 use function class_exists;
 
@@ -104,7 +103,7 @@ class MessengerEventSubscriber implements EventSubscriberInterface
 
             $worker->onWorkerRunning($this->clock->now());
 
-            $this->entityManager->flush();
+            $this->flush();
         }
     }
 
@@ -142,13 +141,12 @@ class MessengerEventSubscriber implements EventSubscriberInterface
         if (null !== $worker) {
             $worker->onWorkerMessageReceived($this->clock->now());
 
-            $this->entityManager->flush();
+            $this->flush();
 
             self::$reportFunction = function () use ($worker) {
-                if ($this->entityManager->isOpen() && $this->entityManager->getConnection()->isConnected()) {
-                    $worker->addMemoryUsage($this->clock->now());
-                    $this->entityManager->flush();
-                }
+                $worker->addMemoryUsage($this->clock->now());
+
+                $this->flush();
             };
         }
     }
@@ -172,21 +170,19 @@ class MessengerEventSubscriber implements EventSubscriberInterface
         if (null !== $doctrineReceivedStamp) {
             $originalMessage = $this->messengerMessageRepository->find($doctrineReceivedStamp->getId());
 
-            if (null === $originalMessage) {
-                throw new LogicException('No message found with id: ' . $doctrineReceivedStamp->getId());
+            if (null !== $originalMessage) {
+                $encodedMessage = $this->serializer->encode($envelope);
+
+                $message = new MessengerMessage();
+                $message->setHeaders($encodedMessage['headers'] ?? '[]');
+                $message->setBody($encodedMessage['body']);
+                $message->setCreatedAt($originalMessage->getCreatedAt());
+                $message->setDeliveredAt($originalMessage->getDeliveredAt());
+                $message->setAvailableAt($originalMessage->getAvailableAt());
+                $message->setQueueName('history');
+
+                $this->entityManager->persist($message);
             }
-
-            $encodedMessage = $this->serializer->encode($envelope);
-
-            $message = new MessengerMessage();
-            $message->setHeaders($encodedMessage['headers'] ?? '[]');
-            $message->setBody($encodedMessage['body']);
-            $message->setCreatedAt($originalMessage->getCreatedAt());
-            $message->setDeliveredAt($originalMessage->getDeliveredAt());
-            $message->setAvailableAt($originalMessage->getAvailableAt());
-            $message->setQueueName('history');
-
-            $this->entityManager->persist($message);
         }
 
         $worker = $this->getWorker();
@@ -197,7 +193,7 @@ class MessengerEventSubscriber implements EventSubscriberInterface
             };
         }
 
-        $this->entityManager->flush();
+        $this->flush();
     }
 
     private function findDoctrineReceivedStamp(Envelope $envelope): ?DoctrineReceivedStamp
@@ -227,7 +223,7 @@ class MessengerEventSubscriber implements EventSubscriberInterface
             self::$reportFunction = function () {
             };
 
-            $this->entityManager->flush();
+            $this->flush();
         }
     }
 
@@ -240,7 +236,7 @@ class MessengerEventSubscriber implements EventSubscriberInterface
             self::$reportFunction = function () {
             };
 
-            $this->entityManager->flush();
+            $this->flush();
         }
     }
 
@@ -253,7 +249,7 @@ class MessengerEventSubscriber implements EventSubscriberInterface
             //       otherwise, write manually to database over the entity manager?
             $worker->onWorkerStarted($this->clock->now());
 
-            $this->entityManager->flush();
+            $this->flush();
         }
     }
 
@@ -263,5 +259,12 @@ class MessengerEventSubscriber implements EventSubscriberInterface
             $event->getEnvelope()
                 ->with(new TrackingStamp(Worker::$currentId, $this->clock->now()))
         );
+    }
+
+    private function flush(): void
+    {
+        if ($this->entityManager->isOpen() && $this->entityManager->getConnection()->isConnected()) {
+            $this->entityManager->flush();
+        }
     }
 }

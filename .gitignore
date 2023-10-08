@@ -4,3 +4,4 @@ tests/app/var/logs/
 tests/app/var/run/
 tests/app/var/tmp/
 .phpunit.result.cache
+composer.lock

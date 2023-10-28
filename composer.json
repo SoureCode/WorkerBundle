@@ -2,6 +2,7 @@
     "name": "sourecode/worker-bundle",
     "type": "project",
     "license": "MIT",
+    "minimum-stability": "dev",
     "autoload": {
         "psr-4": {
             "SoureCode\\Bundle\\Worker\\": "src/"
@@ -26,16 +27,16 @@
     "require": {
         "php": ">=8.2",
         "ext-pcntl": "*",
-        "sourecode/daemon-bundle": "^0.11.2",
+        "sourecode/daemon-bundle": "^0.11.3",
         "doctrine/doctrine-bundle": "^2.10",
         "doctrine/orm": "^2.16 || ^3.0",
-        "symfony/messenger": "^6.3 || ^6.4 || ^7.0",
-        "symfony/serializer": "^6.3 || ^6.4 || ^7.0"
+        "symfony/messenger": "^6.3 || ^6.4",
+        "symfony/serializer": "^6.3 || ^6.4"
     },
     "require-dev": {
         "nyholm/symfony-bundle-test": "^2.0",
         "phpunit/phpunit": "^9.5",
-        "symfony/phpunit-bridge": "^6.3 || ^6.4 || ^7.0",
-        "symfony/doctrine-messenger": "^6.3 || ^6.4 || ^7.0"
+        "symfony/phpunit-bridge": "^6.3 || ^6.4",
+        "symfony/doctrine-messenger": "^6.3 || ^6.4"
     }
 }

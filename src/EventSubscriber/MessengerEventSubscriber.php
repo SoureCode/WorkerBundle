@@ -2,22 +2,14 @@
 
 namespace SoureCode\Bundle\Worker\EventSubscriber;
 
-use Closure;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Clock\ClockInterface;
 use Psr\Log\LoggerInterface;
-use SoureCode\Bundle\Daemon\Manager\DaemonManager;
-use SoureCode\Bundle\Worker\Entity\MessengerMessage;
 use SoureCode\Bundle\Worker\Entity\Worker;
 use SoureCode\Bundle\Worker\Entity\WorkerStatus;
-use SoureCode\Bundle\Worker\Manager\WorkerManager;
 use SoureCode\Bundle\Worker\Messenger\TrackingStamp;
-use SoureCode\Bundle\Worker\Repository\MessengerMessageRepository;
 use SoureCode\Bundle\Worker\Repository\WorkerRepository;
-use Symfony\Component\DependencyInjection\Attribute\Autoconfigure;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
-use Symfony\Component\Messenger\Bridge\Doctrine\Transport\DoctrineReceivedStamp;
-use Symfony\Component\Messenger\Envelope;
 use Symfony\Component\Messenger\Event\SendMessageToTransportsEvent;
 use Symfony\Component\Messenger\Event\WorkerMessageFailedEvent;
 use Symfony\Component\Messenger\Event\WorkerMessageHandledEvent;
@@ -25,49 +17,17 @@ use Symfony\Component\Messenger\Event\WorkerMessageReceivedEvent;
 use Symfony\Component\Messenger\Event\WorkerRunningEvent;
 use Symfony\Component\Messenger\Event\WorkerStartedEvent;
 use Symfony\Component\Messenger\Event\WorkerStoppedEvent;
-use Symfony\Component\Messenger\Transport\Serialization\SerializerInterface;
 use function class_exists;
 
-#[Autoconfigure(tags: ['monolog.logger' => ['channel' => 'worker']])]
 class MessengerEventSubscriber implements EventSubscriberInterface
 {
-    private static ?Closure $reportFunction = null;
-
-    private ClockInterface $clock;
-    private LoggerInterface $logger;
-    private EntityManagerInterface $entityManager;
-    private WorkerRepository $workerRepository;
-    private MessengerMessageRepository $messengerMessageRepository;
-    private SerializerInterface $serializer;
-    private DaemonManager $daemonManager;
-
     public function __construct(
-        ClockInterface             $clock,
-        LoggerInterface            $logger,
-        EntityManagerInterface     $entityManager,
-        WorkerRepository           $workerRepository,
-        MessengerMessageRepository $messengerMessageRepository,
-        SerializerInterface        $serializer,
-        DaemonManager              $daemonManager,
+        private readonly LoggerInterface        $logger,
+        private readonly ClockInterface         $clock,
+        private readonly EntityManagerInterface $entityManager,
+        private readonly WorkerRepository       $workerRepository,
     )
     {
-        $this->clock = $clock;
-        $this->logger = $logger;
-        $this->entityManager = $entityManager;
-        $this->workerRepository = $workerRepository;
-        $this->messengerMessageRepository = $messengerMessageRepository;
-        $this->serializer = $serializer;
-        $this->daemonManager = $daemonManager;
-
-        self::$reportFunction = function () {
-        };
-    }
-
-    public static function report(): void
-    {
-        if (null !== self::$reportFunction) {
-            (self::$reportFunction)();
-        }
     }
 
     public static function getSubscribedEvents(): array
@@ -88,20 +48,14 @@ class MessengerEventSubscriber implements EventSubscriberInterface
         $worker = $this->getWorker();
 
         if (null !== $worker) {
-            if ($event->isWorkerIdle() && $worker->getShouldExit()) {
-                $event->getWorker()->stop();
-                $worker->setShouldExit(false);
-                $worker->setStatus(WorkerStatus::OFFLINE);
+            $this->logger->debug('Worker running.', [
+                'worker_id' => $worker->getId(),
+                'is_worker_idle' => $event->isWorkerIdle(),
+            ]);
 
-                // prevent auto restart from daemon.
-                $daemonId = WorkerManager::getDaemonId($worker->getId());
-                $pid = $this->daemonManager->pid($daemonId);
-                $pid->dumpExitFile();
-            } else {
-                $worker->setStatus($event->isWorkerIdle() ? WorkerStatus::IDLE : WorkerStatus::PROCESSING);
-            }
-
-            $worker->onWorkerRunning($this->clock->now());
+            $now = $this->clock->now();
+            $worker->setStatus($event->isWorkerIdle() ? WorkerStatus::IDLE : WorkerStatus::PROCESSING);
+            $worker->setLastHeartbeat($now);
 
             $this->flush();
         }
@@ -110,6 +64,7 @@ class MessengerEventSubscriber implements EventSubscriberInterface
     private function getWorker(): ?Worker
     {
         if (null === Worker::$currentId) {
+            $this->logger->warning('Worker id is not set, who is responsible for this?');
             return null;
         }
 
@@ -117,9 +72,20 @@ class MessengerEventSubscriber implements EventSubscriberInterface
 
         if ($this->entityManager->isOpen()) {
             $this->entityManager->refresh($worker);
+        } else {
+            $this->logger->warning('Entity manager is closed, can not refresh worker.');
         }
 
         return $worker;
+    }
+
+    private function flush(): void
+    {
+        if ($this->entityManager->isOpen() && $this->entityManager->getConnection()->isConnected()) {
+            $this->entityManager->flush();
+        } else {
+            $this->logger->warning('Entity manager is closed, can not flush.');
+        }
     }
 
     public function onWorkerMessageReceived(WorkerMessageReceivedEvent $event): void
@@ -139,15 +105,16 @@ class MessengerEventSubscriber implements EventSubscriberInterface
         $worker = $this->getWorker();
 
         if (null !== $worker) {
-            $worker->onWorkerMessageReceived($this->clock->now());
+            $this->logger->debug('Worker message received.', [
+                'worker_id' => $worker->getId(),
+                'envelope' => $event->getEnvelope(),
+                'transport' => $event->getReceiverName(),
+            ]);
+
+            $worker->setLastHeartbeat($this->clock->now());
+            $worker->setStatus(WorkerStatus::PROCESSING);
 
             $this->flush();
-
-            self::$reportFunction = function () use ($worker) {
-                $worker->addMemoryUsage($this->clock->now());
-
-                $this->flush();
-            };
         }
     }
 
@@ -163,45 +130,20 @@ class MessengerEventSubscriber implements EventSubscriberInterface
 
         $stamp->markFinished();
 
-        $envelope = $event->getEnvelope();
-
-        $doctrineReceivedStamp = $this->findDoctrineReceivedStamp($envelope);
-
-        if (null !== $doctrineReceivedStamp) {
-            $originalMessage = $this->messengerMessageRepository->find($doctrineReceivedStamp->getId());
-
-            if (null !== $originalMessage) {
-                $encodedMessage = $this->serializer->encode($envelope);
-
-                $message = new MessengerMessage();
-                $message->setHeaders($encodedMessage['headers'] ?? '[]');
-                $message->setBody($encodedMessage['body']);
-                $message->setCreatedAt($originalMessage->getCreatedAt());
-                $message->setDeliveredAt($originalMessage->getDeliveredAt());
-                $message->setAvailableAt($originalMessage->getAvailableAt());
-                $message->setQueueName('history');
-
-                $this->entityManager->persist($message);
-            }
-        }
-
         $worker = $this->getWorker();
 
         if (null !== $worker) {
-            $worker->onWorkerMessageHandled($this->clock->now());
-            self::$reportFunction = function () {
-            };
+            $this->logger->debug('Worker message handled.', [
+                'worker_id' => $worker->getId(),
+                'envelope' => $event->getEnvelope(),
+                'transport' => $event->getReceiverName(),
+            ]);
+
+            $worker->setLastHeartbeat($this->clock->now());
+            $worker->incrementHandled();
         }
 
         $this->flush();
-    }
-
-    private function findDoctrineReceivedStamp(Envelope $envelope): ?DoctrineReceivedStamp
-    {
-        /** @var DoctrineReceivedStamp|null $doctrineReceivedStamp */
-        $doctrineReceivedStamp = $envelope->last(DoctrineReceivedStamp::class);
-
-        return $doctrineReceivedStamp ?? null;
     }
 
     public function onWorkerMessageFailed(WorkerMessageFailedEvent $event): void
@@ -219,9 +161,16 @@ class MessengerEventSubscriber implements EventSubscriberInterface
         $worker = $this->getWorker();
 
         if (null !== $worker) {
-            $worker->onWorkerMessageFailed($this->clock->now());
-            self::$reportFunction = function () {
-            };
+            $this->logger->debug('Worker message failed.', [
+                'worker_id' => $worker->getId(),
+                'envelope' => $event->getEnvelope(),
+                'exception' => $event->getThrowable(),
+                'transport' => $event->getReceiverName(),
+                'will_retry' => $event->willRetry(),
+            ]);
+
+            $worker->setLastHeartbeat($this->clock->now());
+            $worker->incrementFailed();
 
             $this->flush();
         }
@@ -232,9 +181,13 @@ class MessengerEventSubscriber implements EventSubscriberInterface
         $worker = $this->getWorker();
 
         if (null !== $worker) {
-            $worker->onWorkerStopped($this->clock->now());
-            self::$reportFunction = function () {
-            };
+            $this->logger->debug('Worker stopped.', [
+                'worker_id' => $worker->getId(),
+            ]);
+
+            $worker->setStatus(WorkerStatus::OFFLINE);
+            $worker->setStartedAt(null);
+            $worker->setLastHeartbeat(null);
 
             $this->flush();
         }
@@ -245,9 +198,17 @@ class MessengerEventSubscriber implements EventSubscriberInterface
         $worker = $this->getWorker();
 
         if (null !== $worker) {
+            $this->logger->debug('Worker started.', [
+                'worker_id' => $worker->getId(),
+            ]);
+
             // @todo test if flush and the middleware named "doctrine_transaction" works
             //       otherwise, write manually to database over the entity manager?
-            $worker->onWorkerStarted($this->clock->now());
+
+            $now = $this->clock->now();
+            $worker->setStatus(WorkerStatus::IDLE);
+            $worker->setStartedAt($now);
+            $worker->setLastHeartbeat($now);
 
             $this->flush();
         }
@@ -259,12 +220,5 @@ class MessengerEventSubscriber implements EventSubscriberInterface
             $event->getEnvelope()
                 ->with(new TrackingStamp(Worker::$currentId, $this->clock->now()))
         );
-    }
-
-    private function flush(): void
-    {
-        if ($this->entityManager->isOpen() && $this->entityManager->getConnection()->isConnected()) {
-            $this->entityManager->flush();
-        }
     }
 }

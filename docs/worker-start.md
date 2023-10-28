@@ -13,7 +13,6 @@ Usage:
 Options:
   -i, --id=ID           Worker ID
   -a, --all             Start all workers
-      --async           Start worker async
   -h, --help            Display help for the given command. When no command is given display help for the list command
   -q, --quiet           Do not output any message
   -V, --version         Display this application version

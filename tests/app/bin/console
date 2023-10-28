@@ -9,21 +9,16 @@ use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Bundle\MonologBundle\MonologBundle;
 use Symfony\Component\Filesystem\Path;
 
-if (!is_file(dirname(__DIR__) . '/../../vendor/autoload_runtime.php')) {
-    throw new LogicException('Symfony Runtime is missing. Try running "composer require symfony/runtime".');
-}
+require_once dirname(__DIR__) . '/../../vendor/autoload.php';
 
-require_once dirname(__DIR__) . '/../../vendor/autoload_runtime.php';
+$kernel = new TestKernel('dev', true);
+$kernel->addTestBundle(MonologBundle::class);
+$kernel->addTestBundle(DoctrineBundle::class);
+$kernel->addTestBundle(SoureCodeDaemonBundle::class);
+$kernel->addTestBundle(SoureCodeWorkerBundle::class);
+$kernel->addTestConfig(Path::join(__DIR__, '..', 'services.php'));
+$kernel->addTestConfig(Path::join(__DIR__, '..', 'config.yaml'));
+$kernel->setTestProjectDir(Path::join(__DIR__, '..'));
 
-return function (array $context) {
-    $kernel = new TestKernel($context['APP_ENV'], (bool)$context['APP_DEBUG']);
-    $kernel->addTestBundle(MonologBundle::class);
-    $kernel->addTestBundle(DoctrineBundle::class);
-    $kernel->addTestBundle(SoureCodeDaemonBundle::class);
-    $kernel->addTestBundle(SoureCodeWorkerBundle::class);
-    $kernel->addTestConfig(Path::join(__DIR__, '..', 'services.php'));
-    $kernel->addTestConfig(Path::join(__DIR__, '..', 'config.yaml'));
-    $kernel->setTestProjectDir(Path::join(__DIR__, '..'));
-
-    return new Application($kernel);
-};
+$app = new Application($kernel);
+$app->run();

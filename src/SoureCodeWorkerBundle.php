@@ -8,8 +8,12 @@ use SoureCode\Bundle\Daemon\Manager\DaemonManager;
 use SoureCode\Bundle\Worker\Command\WorkerCommand;
 use SoureCode\Bundle\Worker\Command\WorkerStartCommand;
 use SoureCode\Bundle\Worker\Command\WorkerStopCommand;
+use SoureCode\Bundle\Worker\Daemon\ChainDumper;
+use SoureCode\Bundle\Worker\Daemon\LaunchdDumper;
+use SoureCode\Bundle\Worker\Daemon\SystemdDumper;
 use SoureCode\Bundle\Worker\DependencyInjection\WorkerCompilerPass;
 use SoureCode\Bundle\Worker\EventSubscriber\MessengerEventSubscriber;
+use SoureCode\Bundle\Worker\EventSubscriber\WorkerEventSubscriber;
 use SoureCode\Bundle\Worker\Manager\WorkerManager;
 use SoureCode\Bundle\Worker\MessageHandler\StartWorkerMessageHandler;
 use SoureCode\Bundle\Worker\Repository\MessengerMessageRepository;
@@ -18,11 +22,11 @@ use Symfony\Component\Config\Definition\Configurator\DefinitionConfigurator;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ContainerConfigurator;
 use Symfony\Component\HttpKernel\Bundle\AbstractBundle;
-use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Messenger\Transport\Serialization\SerializerInterface;
 use function Symfony\Component\DependencyInjection\Loader\Configurator\abstract_arg;
 use function Symfony\Component\DependencyInjection\Loader\Configurator\param;
 use function Symfony\Component\DependencyInjection\Loader\Configurator\service;
+use function Symfony\Component\DependencyInjection\Loader\Configurator\tagged_iterator;
 
 class SoureCodeWorkerBundle extends AbstractBundle
 {
@@ -31,6 +35,9 @@ class SoureCodeWorkerBundle extends AbstractBundle
         // @formatter:off
         $definition->rootNode()
             ->children()
+                ->scalarNode('service_directory')
+                    ->defaultValue('%kernel.project_dir%/etc/daemons/worker')
+                ->end()
             ->end();
         // @formatter:on
     }
@@ -38,6 +45,38 @@ class SoureCodeWorkerBundle extends AbstractBundle
     public function loadExtension(array $config, ContainerConfigurator $container, ContainerBuilder $builder): void
     {
         $services = $container->services();
+        $parameters = $container->parameters();
+
+        $parameters->set('soure_code.worker.service_directory', $config['service_directory']);
+
+        $services->set('soure_code.worker.dumper.launchd', LaunchdDumper::class)
+            ->args([
+                service('filesystem'),
+                param('kernel.project_dir'),
+                param('soure_code.worker.service_directory'),
+            ])
+            ->tag('soure_code.worker.dumper');
+
+        $services->set('soure_code.worker.dumper.systemd', SystemdDumper::class)
+            ->args([
+                service('filesystem'),
+                param('kernel.project_dir'),
+                param('soure_code.worker.service_directory'),
+            ])
+            ->tag('soure_code.worker.dumper');
+
+        $services->set('soure_code.worker.dumper.chain', ChainDumper::class)
+            ->args([
+                tagged_iterator('soure_code.worker.dumper'),
+            ]);
+
+        $services->set('soure_code.worker.doctrine.worker_event_subscriber', WorkerEventSubscriber::class)
+            ->args([
+                service('soure_code.worker.manager.worker'),
+            ])
+            ->tag('doctrine.event_listener', [
+                'event' => 'postRemove',
+            ]);
 
         $services->set('soure_code.worker.repository.worker', WorkerRepository::class)
             ->args([
@@ -63,16 +102,14 @@ class SoureCodeWorkerBundle extends AbstractBundle
             ->args([
                 service(DaemonManager::class),
                 service(EntityManagerInterface::class),
-                service('logger'),
                 service('soure_code.worker.repository.worker'),
-                param('kernel.project_dir'),
                 abstract_arg('global_failure_transport'),
                 abstract_arg('failure_transports_locator'),
                 abstract_arg('receiver_names'),
                 abstract_arg('bus_ids'),
-                service(MessageBusInterface::class),
                 service(ClockInterface::class),
                 service(SerializerInterface::class),
+                service('soure_code.worker.dumper.chain')
             ])
             ->tag('monolog.logger', [
                 'channel' => 'worker',
@@ -84,13 +121,10 @@ class SoureCodeWorkerBundle extends AbstractBundle
 
         $services->set('soure_code.worker.event_subscriber.messenger', MessengerEventSubscriber::class)
             ->args([
-                service(ClockInterface::class),
                 service('logger'),
+                service(ClockInterface::class),
                 service(EntityManagerInterface::class),
                 service('soure_code.worker.repository.worker'),
-                service('soure_code.worker.repository.messenger_message'),
-                service(SerializerInterface::class),
-                service(DaemonManager::class),
             ])
             ->tag('monolog.logger', [
                 'channel' => 'worker',
@@ -130,18 +164,6 @@ class SoureCodeWorkerBundle extends AbstractBundle
             ->tag('console.command', [
                 'command' => 'worker:stop',
             ]);
-
-        $services->set('soure_code.message_handler.start_worker', StartWorkerMessageHandler::class)
-            ->args([
-                service('soure_code.worker.manager.worker'),
-            ])
-            ->tag('messenger.message_handler');
-
-        $services->set('soure_code.message_handler.stop_worker', StartWorkerMessageHandler::class)
-            ->args([
-                service('soure_code.worker.manager.worker'),
-            ])
-            ->tag('messenger.message_handler');
     }
 
     public function build(ContainerBuilder $container): void

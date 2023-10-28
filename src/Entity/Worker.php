@@ -45,9 +45,6 @@ class Worker
     private WorkerStatus $status = WorkerStatus::OFFLINE;
 
     #[ORM\Column]
-    private array $memoryUsage = [];
-
-    #[ORM\Column]
     private ?int $handled = 0;
 
     #[ORM\Column]
@@ -55,9 +52,6 @@ class Worker
 
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
     private ?DateTimeImmutable $startedAt = null;
-
-    #[ORM\Column]
-    private ?bool $shouldExit = false;
 
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
     private ?DateTimeImmutable $lastHeartbeat = null;
@@ -226,16 +220,6 @@ class Worker
         return $this;
     }
 
-    public function getMemoryUsage(): array
-    {
-        return $this->memoryUsage;
-    }
-
-    public function setMemoryUsage(array $memoryUsage): void
-    {
-        $this->memoryUsage = $memoryUsage;
-    }
-
     public function getStartedAt(): ?DateTimeImmutable
     {
         return $this->startedAt;
@@ -268,18 +252,6 @@ class Worker
         $this->failed = $failed;
     }
 
-    public function getShouldExit(): ?bool
-    {
-        return $this->shouldExit;
-    }
-
-    public function setShouldExit(?bool $shouldExit): self
-    {
-        $this->shouldExit = $shouldExit;
-
-        return $this;
-    }
-
     public function getLastHeartbeat(): ?DateTimeImmutable
     {
         return $this->lastHeartbeat;
@@ -290,64 +262,6 @@ class Worker
         $this->lastHeartbeat = $lastHeartbeat;
     }
 
-    public function onWorkerStarted(DateTimeImmutable $timestamp): void
-    {
-        $this->online($timestamp);
-        $this->addMemoryUsage($timestamp);
-    }
-
-    private function online(DateTimeImmutable $timestamp): void
-    {
-        $this->setStatus(WorkerStatus::IDLE);
-        $this->setShouldExit(false);
-        $this->setStartedAt($timestamp);
-        $this->setLastHeartbeat($timestamp);
-    }
-
-    public function addMemoryUsage(DateTimeImmutable $timestamp): void
-    {
-        $memoryUsage = memory_get_usage(true);
-        $key = $timestamp->format('Y-m-d\TH:i:s');
-
-        if (array_key_exists($key, $this->memoryUsage)) {
-            $this->memoryUsage[$key] = max(
-                $this->memoryUsage[$key],
-                $memoryUsage
-            );
-        } else {
-            $this->memoryUsage[$key] = $memoryUsage;
-        }
-
-        // remove older than 1 hour
-        $this->memoryUsage = array_filter($this->memoryUsage, static function ($key) use ($timestamp) {
-            $date = new DateTimeImmutable($key);
-            $diff = $timestamp->getTimestamp() - $date->getTimestamp();
-
-            return $diff < 3600;
-        }, ARRAY_FILTER_USE_KEY);
-    }
-
-    public function onWorkerStopped(DateTimeImmutable $timestamp): void
-    {
-        $this->offline();
-        $this->addMemoryUsage($timestamp);
-    }
-
-    public function offline(): void
-    {
-        $this->setStatus(WorkerStatus::OFFLINE);
-        $this->setStartedAt(null);
-        $this->setShouldExit(false);
-        $this->setLastHeartbeat(null);
-    }
-
-    public function onWorkerMessageFailed(DateTimeImmutable $timestamp): void
-    {
-        $this->setLastHeartbeat($timestamp);
-        $this->incrementFailed();
-        $this->addMemoryUsage($timestamp);
-    }
-
     public function incrementFailed(): int
     {
         $this->failed++;
@@ -355,30 +269,10 @@ class Worker
         return $this->failed;
     }
 
-    public function onWorkerMessageHandled(DateTimeImmutable $timestamp): void
-    {
-        $this->setLastHeartbeat($timestamp);
-        $this->incrementHandled();
-        $this->addMemoryUsage($timestamp);
-    }
-
     public function incrementHandled(): int
     {
         $this->handled++;
 
         return $this->handled;
-    }
-
-    public function onWorkerMessageReceived(DateTimeImmutable $timestamp): void
-    {
-        $this->setLastHeartbeat($timestamp);
-        $this->setStatus(WorkerStatus::PROCESSING);
-        $this->addMemoryUsage($timestamp);
-    }
-
-    public function onWorkerRunning(DateTimeImmutable $timestamp): void
-    {
-        $this->setLastHeartbeat($timestamp);
-        $this->addMemoryUsage($timestamp);
     }
 }

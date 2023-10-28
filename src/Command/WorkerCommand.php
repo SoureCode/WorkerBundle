@@ -79,5 +79,4 @@ class WorkerCommand extends BaseConsumeMessagesCommand
         return parent::execute($input, $output);
     }
 
-
 }

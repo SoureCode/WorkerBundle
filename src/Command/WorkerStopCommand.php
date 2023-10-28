@@ -27,26 +27,16 @@ class WorkerStopCommand extends Command
 
     protected function configure(): void
     {
-        $this->addOption('id', 'i', InputOption::VALUE_OPTIONAL, 'Worker ID')
-            ->addOption('timeout', 't', InputOption::VALUE_OPTIONAL, 'Timeout in seconds')
-            ->addOption('signal', 's', InputOption::VALUE_OPTIONAL | InputOption::VALUE_IS_ARRAY, 'Signals to send')
-            ->addOption('all', 'a', InputOption::VALUE_NONE, 'Stop all workers')
-            ->addOption('by-files', null, InputOption::VALUE_NONE, 'Stop workers by their pid files')
-            ->addOption('async', null, InputOption::VALUE_NONE, 'Stop worker async');
+        $this
+            ->addOption('id', 'i', InputOption::VALUE_OPTIONAL, 'Worker ID')
+            ->addOption('all', 'a', InputOption::VALUE_NONE, 'Stop all workers');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $id = $input->getOption('id');
         $all = $input->getOption('all');
-        $async = $input->getOption('async');
-        $byFiles = $input->getOption('by-files');
-        $timeout = $input->getOption('timeout');
-        $signals = $input->getOption('signal');
-
-        if (empty($signals)) {
-            $signals = null;
-        }
+        $gracefully = $input->getOption('gracefully');
 
         if ($id !== null && $all) {
             throw new RuntimeException('You cannot specify both --id and --all');
@@ -56,26 +46,8 @@ class WorkerStopCommand extends Command
             throw new RuntimeException('You must specify either --id or --all');
         }
 
-        if ($all && $async) {
-            throw new RuntimeException('You cannot specify both --all and --async');
-        }
-
-        if ($byFiles && $async) {
-            throw new RuntimeException('You cannot specify both --by-files and --async');
-        }
-
-        if ($byFiles && $id) {
-            throw new RuntimeException('You cannot specify both --by-files and --id');
-        }
-
         if ($all) {
-            $stopped = $this->workerManager->stopAll($byFiles ?? false, $timeout, $signals);
-
-            if ($stopped) {
-                return Command::SUCCESS;
-            }
-
-            return Command::FAILURE;
+            return $this->workerManager->stopAll() ? Command::SUCCESS : Command::FAILURE;
         }
 
         if ($id === null) {
@@ -87,16 +59,6 @@ class WorkerStopCommand extends Command
             throw new RuntimeException('Worker ID must be numeric');
         }
 
-        if ($async) {
-            $stopped = $this->workerManager->stopAsync($id, $timeout, $signals);
-        } else {
-            $stopped = $this->workerManager->stop($id, $timeout, $signals);
-        }
-
-        if ($stopped) {
-            return Command::SUCCESS;
-        }
-
-        return Command::FAILURE;
+        return $this->workerManager->stop($id) ? Command::SUCCESS : Command::FAILURE;
     }
 }

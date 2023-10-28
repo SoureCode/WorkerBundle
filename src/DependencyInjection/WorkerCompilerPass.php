@@ -30,9 +30,9 @@ class WorkerCompilerPass implements CompilerPassInterface
         $retryDefinition = $container->getDefinition('console.command.messenger_failed_messages_retry');
         $workerManagerDefinition = $container->getDefinition('soure_code.worker.manager.worker');
 
-        $workerManagerDefinition->setArgument(5, $retryDefinition->getArgument(0));
-        $workerManagerDefinition->setArgument(6, $retryDefinition->getArgument(1));
-        $workerManagerDefinition->setArgument(7, $sourceDefinition->getArgument(4));
-        $workerManagerDefinition->setArgument(8, $sourceDefinition->getArgument(6));
+        $workerManagerDefinition->setArgument(3, $retryDefinition->getArgument(0));
+        $workerManagerDefinition->setArgument(4, $retryDefinition->getArgument(1));
+        $workerManagerDefinition->setArgument(5, $sourceDefinition->getArgument(4));
+        $workerManagerDefinition->setArgument(6, $sourceDefinition->getArgument(6));
     }
 }

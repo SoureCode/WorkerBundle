@@ -28,15 +28,13 @@ class WorkerStartCommand extends Command
     protected function configure(): void
     {
         $this->addOption('id', 'i', InputOption::VALUE_REQUIRED, 'Worker ID')
-            ->addOption('all', 'a', InputOption::VALUE_NONE, 'Start all workers')
-            ->addOption('async', null, InputOption::VALUE_NONE, 'Start worker async');
+            ->addOption('all', 'a', InputOption::VALUE_NONE, 'Start all workers');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $id = $input->getOption('id');
         $all = $input->getOption('all');
-        $async = $input->getOption('async');
 
         if (null !== $id && $all) {
             throw new RuntimeException('You can not use --id and --all at the same time');
@@ -46,18 +44,8 @@ class WorkerStartCommand extends Command
             throw new RuntimeException('You must use --id or --all');
         }
 
-        if ($all && $async) {
-            throw new RuntimeException('You can not use --all and --async at the same time');
-        }
-
         if ($all) {
-            $started = $this->workerManager->startAll();
-
-            if ($started) {
-                return Command::SUCCESS;
-            }
-
-            return Command::FAILURE;
+            return $this->workerManager->startAll() ? Command::SUCCESS : Command::FAILURE;
         }
 
         if ($id === null) {
@@ -69,17 +57,7 @@ class WorkerStartCommand extends Command
             throw new RuntimeException('Worker ID must be numeric');
         }
 
-        if ($async) {
-            $started = $this->workerManager->startAsync($id);
-        } else {
-            $started = $this->workerManager->start($id);
-        }
-
-        if ($started) {
-            return Command::SUCCESS;
-        }
-
-        return Command::FAILURE;
+        return $this->workerManager->start($id) ? Command::SUCCESS : Command::FAILURE;
     }
 
 

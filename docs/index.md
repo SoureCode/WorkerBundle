@@ -25,8 +25,6 @@ $ symfony console worker:stop --id 1
 $ symfony console worker:stop --all
 ```
 
-If you want to use the [`--async`](./async.md) option you have to configure the corresponding messenger messages.
-
 ## Installation
 
 Make sure Composer is installed globally, as explained in the

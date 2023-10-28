@@ -31,17 +31,6 @@ framework:
       SoureCode\Bundle\Worker\Tests\app\src\Message\SleepMessage: async
       SoureCode\Bundle\Worker\Tests\app\src\Message\StopMessage: async
 
-monolog:
-  handlers:
-    console:
-      type: console
-      level: debug
-    file:
-      type: stream
-      path: '%kernel.project_dir%/var/logs/debug.log'
-      level: debug
-      channels: [ '!doctrine' ]
-
 doctrine:
   dbal:
     url: 'sqlite:///%kernel.project_dir%/var/data.db'

@@ -73,10 +73,12 @@ class WorkerManagerTest extends AbstractBaseTest
 
         try {
             // Act
+            // Ensure all are stopped
+            self::assertTrue($this->workerManager->stopAll());
             self::assertTrue($this->workerManager->startAll());
 
             // a short sleep to ensure that the worker is started by the specific supervisor
-            sleep(1);
+            sleep(2);
 
             $this->entityManager->refresh($worker);
             self::assertSame(WorkerStatus::IDLE, $worker->getStatus(), 'Worker should be idle.');

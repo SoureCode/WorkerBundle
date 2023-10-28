@@ -6,13 +6,11 @@ use Nyholm\BundleTest\TestKernel;
 use SoureCode\Bundle\Daemon\SoureCodeDaemonBundle;
 use SoureCode\Bundle\Worker\SoureCodeWorkerBundle;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
-use Symfony\Bundle\MonologBundle\MonologBundle;
 use Symfony\Component\Filesystem\Path;
 
 require_once dirname(__DIR__) . '/../../vendor/autoload.php';
 
 $kernel = new TestKernel('dev', true);
-$kernel->addTestBundle(MonologBundle::class);
 $kernel->addTestBundle(DoctrineBundle::class);
 $kernel->addTestBundle(SoureCodeDaemonBundle::class);
 $kernel->addTestBundle(SoureCodeWorkerBundle::class);

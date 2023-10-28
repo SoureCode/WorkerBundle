@@ -41,6 +41,7 @@ class WorkerTest extends AbstractBaseTest
             $this->assertSame(0, $worker->getFailed(), 'No message has been failed');
             $this->assertEmpty($this->messengerMessageRepository->findAll(), 'No message has been dispatched');
 
+            self::assertTrue($this->workerManager->stop($worker));
             self::assertTrue($this->workerManager->start($worker));
 
             self::assertTrue($this->workerManager->isRunning($worker));

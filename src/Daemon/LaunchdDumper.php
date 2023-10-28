@@ -27,6 +27,10 @@ class LaunchdDumper extends AbstractDumper
     <integer>10</integer>
     <key>WorkingDirectory</key>
     <string>{{PROJECT_DIRECTORY}}</string>
+    <key>StandardOutPath</key>
+    <string>{{PROJECT_DIRECTORY}}/var/logs/soure_code_worker_{{WORKER_ID}}.log</string>
+    <key>StandardErrorPath</key>
+    <string>{{PROJECT_DIRECTORY}}/var/logs/soure_code_worker_{{WORKER_ID}}.log</string>
   </dict>
 </plist>
 EOF;

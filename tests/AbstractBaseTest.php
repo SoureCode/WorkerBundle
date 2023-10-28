@@ -24,7 +24,6 @@ abstract class AbstractBaseTest extends KernelTestCase
          * @var TestKernel $kernel
          */
         $kernel = parent::createKernel($options);
-        $kernel->addTestBundle(MonologBundle::class);
         $kernel->addTestBundle(DoctrineBundle::class);
         $kernel->addTestBundle(SoureCodeDaemonBundle::class);
         $kernel->addTestBundle(SoureCodeWorkerBundle::class);

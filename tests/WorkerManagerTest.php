@@ -15,11 +15,9 @@ use Symfony\Component\Messenger\Transport\Serialization\SerializerInterface;
 
 class WorkerManagerTest extends AbstractBaseTest
 {
-    private ?WorkerRepository $workerRepository = null;
     private ?EntityManagerInterface $entityManager = null;
     private ?MessageBusInterface $messageBus = null;
     private ?MessengerMessageRepository $messengerMessageRepository = null;
-    private ?SerializerInterface $serializer;
     private ?WorkerManager $workerManager = null;
 
     public function testManagerCompilerPass(): void
@@ -77,21 +75,23 @@ class WorkerManagerTest extends AbstractBaseTest
             self::assertTrue($this->workerManager->stopAll());
             self::assertTrue($this->workerManager->startAll());
 
-            // a short sleep to ensure that the worker is started by the specific supervisor
-            sleep(2);
+            // wait until worker is idle (online)
+            $this->waitUntil(function () use ($worker) {
+                $this->entityManager->refresh($worker);
 
-            $this->entityManager->refresh($worker);
-            self::assertSame(WorkerStatus::IDLE, $worker->getStatus(), 'Worker should be idle.');
+                return $worker->getStatus() === WorkerStatus::IDLE;
+            });
 
             $this->messageBus->dispatch(new SleepMessage(2));
             $this->messageBus->dispatch(new SleepMessage(2));
             $this->messageBus->dispatch(new SleepMessage(2));
 
-            // Wait a bit to ensure that the worker is running and processing a message.
-            sleep(1);
+            // wait a bit until the worker is processing
+            $this->waitUntil(function () use ($worker) {
+                $this->entityManager->refresh($worker);
 
-            $this->entityManager->refresh($worker);
-            self::assertSame(WorkerStatus::PROCESSING, $worker->getStatus(), 'Worker should be processing.');
+                return $worker->getStatus() === WorkerStatus::PROCESSING;
+            });
 
             // Act
             self::assertTrue($this->workerManager->stop($worker));
@@ -114,11 +114,9 @@ class WorkerManagerTest extends AbstractBaseTest
 
         $container = self::getContainer();
 
-        $this->workerRepository = $container->get(WorkerRepository::class);
         $this->messengerMessageRepository = $container->get(MessengerMessageRepository::class);
         $this->entityManager = $container->get(EntityManagerInterface::class);
         $this->messageBus = $container->get(MessageBusInterface::class);
-        $this->serializer = $container->get(SerializerInterface::class);
         $this->workerManager = $container->get(WorkerManager::class);
 
         $schemaTool = new SchemaTool($this->entityManager);
@@ -138,11 +136,9 @@ class WorkerManagerTest extends AbstractBaseTest
         $this->entityManager->clear();
         $this->entityManager->close();
 
-        $this->workerRepository = null;
         $this->messengerMessageRepository = null;
         $this->entityManager = null;
         $this->messageBus = null;
-        $this->serializer = null;
         $this->workerManager = null;
     }
 }

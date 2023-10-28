@@ -2,10 +2,8 @@
 
 namespace SoureCode\Bundle\Worker\Tests;
 
-use Closure;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Tools\SchemaTool;
-use RuntimeException;
 use SoureCode\Bundle\Worker\Entity\MessengerMessage;
 use SoureCode\Bundle\Worker\Entity\Worker;
 use SoureCode\Bundle\Worker\Entity\WorkerStatus;
@@ -14,7 +12,6 @@ use SoureCode\Bundle\Worker\Repository\MessengerMessageRepository;
 use SoureCode\Bundle\Worker\Repository\WorkerRepository;
 use SoureCode\Bundle\Worker\Tests\app\src\Message\SleepMessage;
 use Symfony\Component\Messenger\MessageBusInterface;
-use Symfony\Component\Messenger\Transport\Serialization\SerializerInterface;
 
 class WorkerTest extends AbstractBaseTest
 {
@@ -22,7 +19,6 @@ class WorkerTest extends AbstractBaseTest
     private ?EntityManagerInterface $entityManager = null;
     private ?MessageBusInterface $messageBus = null;
     private ?MessengerMessageRepository $messengerMessageRepository = null;
-    private ?SerializerInterface $serializer;
     private ?WorkerManager $workerManager = null;
 
     public function testWorkerStart(): void
@@ -80,24 +76,6 @@ class WorkerTest extends AbstractBaseTest
         }
     }
 
-    private function waitUntil(Closure $closure, int $timeout = 20): void
-    {
-        $iteration = 0;
-
-        while (true) {
-            if ($closure()) {
-                return;
-            }
-
-            if ($iteration > $timeout) {
-                throw new RuntimeException('Timeout');
-            }
-
-            $iteration++;
-            sleep(1);
-        }
-    }
-
     protected function setUp(): void
     {
         parent::setUp();
@@ -108,7 +86,6 @@ class WorkerTest extends AbstractBaseTest
         $this->messengerMessageRepository = $container->get(MessengerMessageRepository::class);
         $this->entityManager = $container->get(EntityManagerInterface::class);
         $this->messageBus = $container->get(MessageBusInterface::class);
-        $this->serializer = $container->get(SerializerInterface::class);
         $this->workerManager = $container->get(WorkerManager::class);
 
         $schemaTool = new SchemaTool($this->entityManager);
@@ -143,7 +120,6 @@ class WorkerTest extends AbstractBaseTest
         $this->messengerMessageRepository = null;
         $this->entityManager = null;
         $this->messageBus = null;
-        $this->serializer = null;
         $this->workerManager = null;
     }
 }

@@ -2,12 +2,13 @@
 
 namespace SoureCode\Bundle\Worker\Tests;
 
+use Closure;
 use Doctrine\Bundle\DoctrineBundle\DoctrineBundle;
 use Nyholm\BundleTest\TestKernel;
+use RuntimeException;
 use SoureCode\Bundle\Daemon\SoureCodeDaemonBundle;
 use SoureCode\Bundle\Worker\SoureCodeWorkerBundle;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
-use Symfony\Bundle\MonologBundle\MonologBundle;
 use Symfony\Component\Filesystem\Path;
 use Symfony\Component\HttpKernel\KernelInterface;
 
@@ -33,5 +34,23 @@ abstract class AbstractBaseTest extends KernelTestCase
         $kernel->handleOptions($options);
 
         return $kernel;
+    }
+
+    protected function waitUntil(Closure $closure, int $timeout = 5): void
+    {
+        $iteration = 0;
+
+        while (true) {
+            if ($closure()) {
+                return;
+            }
+
+            if ($iteration > $timeout) {
+                throw new RuntimeException('Timeout');
+            }
+
+            $iteration++;
+            sleep(1);
+        }
     }
 }

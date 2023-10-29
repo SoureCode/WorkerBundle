@@ -12,6 +12,7 @@ abstract class AbstractDumper implements DumperInterface
 {
     public function __construct(
         protected readonly Filesystem $filesystem,
+        protected readonly string     $logsDirectory,
         protected readonly string     $projectDirectory,
         protected readonly string     $serviceDirectory,
     )
@@ -70,17 +71,10 @@ abstract class AbstractDumper implements DumperInterface
         }
     }
 
-    protected function getLogsDirectory(): string
-    {
-        return Path::join($this->projectDirectory, 'var', 'logs');
-    }
-
     protected function ensureLogsDirectory(): void
     {
-        $logsDirectory = $this->getLogsDirectory();
-
-        if (!$this->filesystem->exists($logsDirectory)) {
-            $this->filesystem->mkdir($logsDirectory);
+        if (!$this->filesystem->exists($this->logsDirectory)) {
+            $this->filesystem->mkdir($this->logsDirectory);
         }
     }
 }

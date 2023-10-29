@@ -15,7 +15,6 @@ use SoureCode\Bundle\Worker\DependencyInjection\WorkerCompilerPass;
 use SoureCode\Bundle\Worker\EventSubscriber\MessengerEventSubscriber;
 use SoureCode\Bundle\Worker\EventSubscriber\WorkerEventSubscriber;
 use SoureCode\Bundle\Worker\Manager\WorkerManager;
-use SoureCode\Bundle\Worker\MessageHandler\StartWorkerMessageHandler;
 use SoureCode\Bundle\Worker\Repository\MessengerMessageRepository;
 use SoureCode\Bundle\Worker\Repository\WorkerRepository;
 use Symfony\Component\Config\Definition\Configurator\DefinitionConfigurator;
@@ -52,6 +51,7 @@ class SoureCodeWorkerBundle extends AbstractBundle
         $services->set('soure_code.worker.dumper.launchd', LaunchdDumper::class)
             ->args([
                 service('filesystem'),
+                param('kernel.logs_dir'),
                 param('kernel.project_dir'),
                 param('soure_code.worker.service_directory'),
             ])
@@ -60,6 +60,7 @@ class SoureCodeWorkerBundle extends AbstractBundle
         $services->set('soure_code.worker.dumper.systemd', SystemdDumper::class)
             ->args([
                 service('filesystem'),
+                param('kernel.logs_dir'),
                 param('kernel.project_dir'),
                 param('soure_code.worker.service_directory'),
             ])

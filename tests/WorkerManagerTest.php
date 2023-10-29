@@ -8,10 +8,8 @@ use SoureCode\Bundle\Worker\Entity\Worker;
 use SoureCode\Bundle\Worker\Entity\WorkerStatus;
 use SoureCode\Bundle\Worker\Manager\WorkerManager;
 use SoureCode\Bundle\Worker\Repository\MessengerMessageRepository;
-use SoureCode\Bundle\Worker\Repository\WorkerRepository;
 use SoureCode\Bundle\Worker\Tests\app\src\Message\SleepMessage;
 use Symfony\Component\Messenger\MessageBusInterface;
-use Symfony\Component\Messenger\Transport\Serialization\SerializerInterface;
 
 class WorkerManagerTest extends AbstractBaseTest
 {

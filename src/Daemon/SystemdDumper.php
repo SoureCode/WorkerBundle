@@ -16,8 +16,8 @@ Restart=always
 RestartSec=10
 TimeoutStopSec=10
 WorkingDirectory={{PROJECT_DIRECTORY}}
-StandardOutput=append:{{PROJECT_DIRECTORY}}/var/logs/soure_code_worker_{{WORKER_ID}}.log
-StandardError=append:{{PROJECT_DIRECTORY}}/var/logs/soure_code_worker_{{WORKER_ID}}.log
+StandardOutput=append:{{PROJECT_DIRECTORY}}/soure_code_worker_{{WORKER_ID}}.log
+StandardError=append:{{LOGS_DIRECTORY}}/soure_code_worker_{{WORKER_ID}}.log
 
 [Install]
 WantedBy=default.target
@@ -33,6 +33,7 @@ EOF;
             "{{WORKER_ID}}" => $worker->getId(),
             "{{COMMAND}}" => implode(' ', $command),
             "{{PROJECT_DIRECTORY}}" => $this->projectDirectory,
+            "{{LOGS_DIRECTORY}}" => $this->logsDirectory,
         ], self::TEMPLATE);
 
         $this->dumpFile($worker, '.service', $contents);

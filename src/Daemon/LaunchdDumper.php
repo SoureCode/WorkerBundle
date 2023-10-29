@@ -28,9 +28,9 @@ class LaunchdDumper extends AbstractDumper
     <key>WorkingDirectory</key>
     <string>{{PROJECT_DIRECTORY}}</string>
     <key>StandardOutPath</key>
-    <string>{{PROJECT_DIRECTORY}}/var/logs/soure_code_worker_{{WORKER_ID}}.log</string>
+    <string>{{LOGS_DIRECTORY}}/soure_code_worker_{{WORKER_ID}}.log</string>
     <key>StandardErrorPath</key>
-    <string>{{PROJECT_DIRECTORY}}/var/logs/soure_code_worker_{{WORKER_ID}}.log</string>
+    <string>{{LOGS_DIRECTORY}}/soure_code_worker_{{WORKER_ID}}.log</string>
   </dict>
 </plist>
 EOF;
@@ -45,6 +45,7 @@ EOF;
             "{{WORKER_ID}}" => $worker->getId(),
             "{{COMMAND_ARGUMENTS}}" => $this->buildArguments($command),
             "{{PROJECT_DIRECTORY}}" => $this->projectDirectory,
+            "{{LOGS_DIRECTORY}}" => $this->logsDirectory,
         ], self::TEMPLATE);
 
         $this->dumpFile($worker, '.plist', $contents);

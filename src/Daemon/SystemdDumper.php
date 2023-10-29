@@ -33,13 +33,13 @@ EOF;
             "{{PROJECT_DIRECTORY}}" => $this->projectDirectory,
         ], self::TEMPLATE);
 
-        $this->dumpFile($worker, '.system', $contents);
+        $this->dumpFile($worker, '.service', $contents);
     }
 
     public function remove(Worker $worker): void
     {
         $serviceFilePath = $this->getServiceFilePath($worker);
 
-        $this->removeFile($serviceFilePath . '.system');
+        $this->removeFile($serviceFilePath . '.service');
     }
 }

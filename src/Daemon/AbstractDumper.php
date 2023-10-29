@@ -69,4 +69,18 @@ abstract class AbstractDumper implements DumperInterface
             $this->filesystem->remove($filePath);
         }
     }
+
+    protected function getLogsDirectory(): string
+    {
+        return Path::join($this->projectDirectory, 'var', 'logs');
+    }
+
+    protected function ensureLogsDirectory(): void
+    {
+        $logsDirectory = $this->getLogsDirectory();
+
+        if (!$this->filesystem->exists($logsDirectory)) {
+            $this->filesystem->mkdir($logsDirectory);
+        }
+    }
 }

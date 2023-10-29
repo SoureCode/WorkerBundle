@@ -37,6 +37,8 @@ EOF;
 
     public function dump(Worker $worker): void
     {
+        $this->ensureLogsDirectory();
+
         $command = $this->getCommand($worker);
 
         $contents = $this->compile([

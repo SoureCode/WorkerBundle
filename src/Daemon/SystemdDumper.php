@@ -16,7 +16,7 @@ Restart=always
 RestartSec=10
 TimeoutStopSec=10
 WorkingDirectory={{PROJECT_DIRECTORY}}
-StandardOutput=append:{{PROJECT_DIRECTORY}}/soure_code_worker_{{WORKER_ID}}.log
+StandardOutput=append:{{LOGS_DIRECTORY}}/soure_code_worker_{{WORKER_ID}}.log
 StandardError=append:{{LOGS_DIRECTORY}}/soure_code_worker_{{WORKER_ID}}.log
 
 [Install]

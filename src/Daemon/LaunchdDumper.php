@@ -49,6 +49,9 @@ EOF;
         ], self::TEMPLATE);
 
         $this->dumpFile($worker, '.plist', $contents);
+
+        $serviceFilePath = $this->getServiceFilePath($worker);
+        $this->filesystem->chmod($serviceFilePath . '.plist', 0644);
     }
 
     private function buildArguments(array $arguments): string

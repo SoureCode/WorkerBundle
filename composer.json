@@ -27,7 +27,7 @@
     "require": {
         "php": ">=8.2",
         "ext-pcntl": "*",
-        "sourecode/daemon-bundle": "^0.11.3",
+        "sourecode/daemon-bundle": "^0.11.4",
         "doctrine/doctrine-bundle": "^2.10",
         "doctrine/orm": "^2.16 || ^3.0",
         "symfony/messenger": "^6.3 || ^6.4",

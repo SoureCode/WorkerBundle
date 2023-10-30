@@ -34,8 +34,14 @@ class SoureCodeWorkerBundle extends AbstractBundle
         // @formatter:off
         $definition->rootNode()
             ->children()
-                ->scalarNode('service_directory')
-                    ->defaultValue('%kernel.project_dir%/etc/daemons/worker')
+                ->scalarNode('directory')
+                    ->defaultValue('%soure_code.daemon.directory%/worker')
+                ->end()
+                ->scalarNode('logs_directory')
+                    ->defaultValue('%kernel.logs_dir%')
+                ->end()
+                ->scalarNode('project_directory')
+                    ->defaultValue('%kernel.project_dir%')
                 ->end()
             ->end();
         // @formatter:on
@@ -46,23 +52,25 @@ class SoureCodeWorkerBundle extends AbstractBundle
         $services = $container->services();
         $parameters = $container->parameters();
 
-        $parameters->set('soure_code.worker.service_directory', $config['service_directory']);
+        $parameters->set('soure_code.worker.directory', $config['directory']);
+        $parameters->set('soure_code.worker.logs_directory', $config['logs_directory']);
+        $parameters->set('soure_code.worker.project_directory', $config['project_directory']);
 
         $services->set('soure_code.worker.dumper.launchd', LaunchdDumper::class)
             ->args([
                 service('filesystem'),
-                param('kernel.logs_dir'),
-                param('kernel.project_dir'),
-                param('soure_code.worker.service_directory'),
+                param('soure_code.worker.logs_directory'),
+                param('soure_code.worker.project_directory'),
+                param('soure_code.daemon.directory'),
             ])
             ->tag('soure_code.worker.dumper');
 
         $services->set('soure_code.worker.dumper.systemd', SystemdDumper::class)
             ->args([
                 service('filesystem'),
-                param('kernel.logs_dir'),
-                param('kernel.project_dir'),
-                param('soure_code.worker.service_directory'),
+                param('soure_code.worker.logs_directory'),
+                param('soure_code.worker.project_directory'),
+                param('soure_code.worker.directory'),
             ])
             ->tag('soure_code.worker.dumper');
 

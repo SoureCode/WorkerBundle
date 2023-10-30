@@ -36,7 +36,6 @@ class WorkerStopCommand extends Command
     {
         $id = $input->getOption('id');
         $all = $input->getOption('all');
-        $gracefully = $input->getOption('gracefully');
 
         if ($id !== null && $all) {
             throw new RuntimeException('You cannot specify both --id and --all');

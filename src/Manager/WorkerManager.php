@@ -71,7 +71,7 @@ class WorkerManager
         $stopped = $this->daemonManager->stop($daemonId);
 
         $this->dumper->remove($worker);
-        $this->daemonManager->reload();
+        $this->daemonManager->reset();
 
         return $stopped;
     }
@@ -115,6 +115,24 @@ class WorkerManager
         return !in_array(false, $started, true);
     }
 
+    public function restartAll(): bool
+    {
+        $workers = $this->workerRepository->findAll();
+
+        if (0 === count($workers)) {
+            return true;
+        }
+
+        $restarted = [];
+
+        foreach ($workers as $worker) {
+            $restarted[] = $this->restart($worker);
+        }
+
+        return !in_array(false, $restarted, true);
+    }
+
+
     public function start(Worker|int $workerOrId): bool
     {
         $worker = $workerOrId;
@@ -132,7 +150,7 @@ class WorkerManager
         }
 
         $this->dumper->dump($worker);
-        $this->daemonManager->reload();
+        $this->daemonManager->reset();
 
         $daemonId = self::getDaemonId($worker->getId());
 
@@ -197,4 +215,42 @@ class WorkerManager
     {
         return $this->serializer->encode($data);
     }
+
+    public function reload(Worker|int $workerOrId): bool
+    {
+        $worker = $workerOrId;
+
+        if (is_int($workerOrId)) {
+            $worker = $this->workerRepository->find($workerOrId);
+
+            if (null === $worker) {
+                throw new InvalidArgumentException(sprintf('Worker with id "%s" not found.', $workerOrId));
+            }
+        }
+
+        $this->dumper->dump($worker);
+        $this->daemonManager->reset();
+
+        $daemonId = self::getDaemonId($worker->getId());
+
+        return $this->daemonManager->reload($daemonId);
+    }
+
+    public function restart(Worker|int $workerOrId): bool
+    {
+        $worker = $workerOrId;
+
+        if (is_int($workerOrId)) {
+            $worker = $this->workerRepository->find($workerOrId);
+
+            if (null === $worker) {
+                throw new InvalidArgumentException(sprintf('Worker with id "%s" not found.', $workerOrId));
+            }
+        }
+
+        $daemonId = self::getDaemonId($worker->getId());
+
+        return $this->daemonManager->restart($daemonId);
+    }
+
 }

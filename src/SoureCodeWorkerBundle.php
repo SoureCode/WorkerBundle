@@ -6,6 +6,8 @@ use Doctrine\ORM\EntityManagerInterface;
 use Psr\Clock\ClockInterface;
 use SoureCode\Bundle\Daemon\Manager\DaemonManager;
 use SoureCode\Bundle\Worker\Command\WorkerCommand;
+use SoureCode\Bundle\Worker\Command\WorkerReloadCommand;
+use SoureCode\Bundle\Worker\Command\WorkerRestartCommand;
 use SoureCode\Bundle\Worker\Command\WorkerStartCommand;
 use SoureCode\Bundle\Worker\Command\WorkerStopCommand;
 use SoureCode\Bundle\Worker\Daemon\ChainDumper;
@@ -172,6 +174,23 @@ class SoureCodeWorkerBundle extends AbstractBundle
             ])
             ->tag('console.command', [
                 'command' => 'worker:stop',
+            ]);
+
+        $services->set('soure_code.worker.command.worker.restart', WorkerRestartCommand::class)
+            ->args([
+                service('soure_code.worker.manager.worker'),
+            ])
+            ->tag('console.command', [
+                'command' => 'worker:restart',
+            ]);
+
+        $services->set('soure_code.worker.command.worker.reload', WorkerReloadCommand::class)
+            ->args([
+                service('soure_code.worker.manager.worker'),
+                service('soure_code.worker.repository.worker'),
+            ])
+            ->tag('console.command', [
+                'command' => 'worker:reload',
             ]);
     }
 

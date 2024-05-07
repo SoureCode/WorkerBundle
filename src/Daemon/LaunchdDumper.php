@@ -20,11 +20,11 @@ class LaunchdDumper extends AbstractDumper
     <key>KeepAlive</key>
     <true/>
     <key>ThrottleInterval</key>
-    <integer>10</integer>
+    <integer>1</integer>
     <key>Disabled</key>
     <true/>
     <key>ExitTimeOut</key>
-    <integer>10</integer>
+    <integer>1</integer>
     <key>WorkingDirectory</key>
     <string>{{PROJECT_DIRECTORY}}</string>
     <key>StandardOutPath</key>

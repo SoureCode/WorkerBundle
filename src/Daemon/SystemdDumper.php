@@ -13,8 +13,8 @@ Description=SoureCode Worker {{WORKER_ID}}
 [Service]
 ExecStart={{COMMAND}}
 Restart=always
-RestartSec=10
-TimeoutStopSec=10
+RestartSec=1
+TimeoutStopSec=1
 WorkingDirectory={{PROJECT_DIRECTORY}}
 StandardOutput=append:{{LOGS_DIRECTORY}}/soure_code_worker_{{WORKER_ID}}.log
 StandardError=append:{{LOGS_DIRECTORY}}/soure_code_worker_{{WORKER_ID}}.log

@@ -86,7 +86,7 @@ class SoureCodeWorkerBundle extends AbstractBundle
                 service('soure_code.worker.manager.worker'),
             ])
             ->tag('doctrine.event_listener', [
-                'event' => 'postRemove',
+                'event' => 'preRemove',
             ]);
 
         $services->set('soure_code.worker.repository.worker', WorkerRepository::class)

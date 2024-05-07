@@ -2,7 +2,7 @@
 
 namespace SoureCode\Bundle\Worker\EventSubscriber;
 
-use Doctrine\ORM\Event\PostRemoveEventArgs;
+use Doctrine\ORM\Event\PreRemoveEventArgs;
 use SoureCode\Bundle\Worker\Entity\Worker;
 use SoureCode\Bundle\Worker\Manager\WorkerManager;
 
@@ -14,7 +14,7 @@ class WorkerEventSubscriber
     {
     }
 
-    public function postRemove(PostRemoveEventArgs $event): void
+    public function preRemove(PreRemoveEventArgs $event): void
     {
         $object = $event->getObject();
 

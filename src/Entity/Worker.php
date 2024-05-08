@@ -73,7 +73,6 @@ class Worker
         $command = [
             WorkerCommand::getDefaultName(),
             '-vv',
-            '--no-debug',
             "--no-interaction",
             '--id',
             $this->getId(),

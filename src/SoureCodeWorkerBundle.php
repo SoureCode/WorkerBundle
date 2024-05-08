@@ -119,7 +119,7 @@ class SoureCodeWorkerBundle extends AbstractBundle
                 abstract_arg('receiver_names'),
                 abstract_arg('bus_ids'),
                 service(ClockInterface::class),
-                service(SerializerInterface::class),
+                service('messenger.default_serializer'),
                 service('soure_code.worker.dumper.chain')
             ])
             ->tag('monolog.logger', [
@@ -152,6 +152,7 @@ class SoureCodeWorkerBundle extends AbstractBundle
                 abstract_arg('5'),
                 abstract_arg('6'),
                 abstract_arg('7'),
+                abstract_arg('8'),
             ])
             ->tag('monolog.logger', [
                 'channel' => 'worker',

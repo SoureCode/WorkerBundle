@@ -33,7 +33,8 @@ class WorkerCommand extends BaseConsumeMessagesCommand
         array                    $receiverNames = [],
         ResetServicesListener    $resetServicesListener = null,
         array                    $busIds = [],
-        ContainerInterface       $rateLimiterLocator = null
+        ContainerInterface       $rateLimiterLocator = null,
+        ?array                   $signals = null,
     )
     {
         $this->loggger = $logger;
@@ -46,7 +47,8 @@ class WorkerCommand extends BaseConsumeMessagesCommand
             $receiverNames,
             $resetServicesListener,
             $busIds,
-            $rateLimiterLocator
+            $rateLimiterLocator,
+            $signals,
         );
     }
 

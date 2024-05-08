@@ -31,7 +31,8 @@
         "doctrine/doctrine-bundle": "^2.10",
         "doctrine/orm": "^2.16 || ^3.0",
         "symfony/messenger": "^6.3 || ^6.4",
-        "symfony/serializer": "^6.3 || ^6.4"
+        "symfony/serializer": "^6.3 || ^6.4",
+        "symfony/property-access": "7.1.x-dev"
     },
     "require-dev": {
         "nyholm/symfony-bundle-test": "^2.0",

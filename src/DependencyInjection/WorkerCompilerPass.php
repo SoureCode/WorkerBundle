@@ -21,6 +21,7 @@ class WorkerCompilerPass implements CompilerPassInterface
             $sourceDefinition->getArgument(5),
             $sourceDefinition->getArgument(6),
             $sourceDefinition->getArgument(7),
+            $sourceDefinition->getArgument(8),
         ]);
 
         // index 1 argument of 'console.command.messenger_failed_messages_retry' // failure_transports_locator
